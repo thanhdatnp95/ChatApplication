@@ -5,7 +5,7 @@ using namespace std;
 
 int main()
 {
-    ConnectionHandler server;
+    ConnectionHandler& server = ConnectionHandler::getInstance();
     server.start();
     return 0;
 }

@@ -4,9 +4,12 @@
 #define        LISTENING_PORT               8888
 #define        HEADER_CONNECT          "Connect"
 #define        HEADER_KEEP_ALIVE     "KeepAlive"       
-#define        HEADER_GROUP_REQ          "Group"
+#define        HEADER_GROUP_REQ    "ModifyGroup"
+#define        HEADER_SINGLE_CHAT   "SingleChat"       
+#define        HEADER_GROUP_CHAT     "GroupChat"
 
 #include <iostream>
+#include <cstdlib>
 #include "Client.h"
 #include "Group.h"
 #include "TCPStream.h"
@@ -21,16 +24,24 @@ class ConnectionHandler
     vector<Group*> lstGroup;
     TCPAcceptor* acceptor;
 
-    void *threadMain(void *);
-    void handleClient(TCPStream*);
+    ConnectionHandler();
+
     Client* updateClient(TCPStream*);
-    int updateGroup(Client*, TCPStream*);
+    int updateGroup(Client*);
+    int requestSingle(Client*);
+    int requestGroup(Client*);
+    Group* checkExistingGroup(string);
+    Client* checkExistingClient(string);
 
 public:
-    ConnectionHandler();
+    ConnectionHandler(ConnectionHandler const&) = delete;
+    void operator=(ConnectionHandler const&) = delete;
+
+    static ConnectionHandler& getInstance();
     ~ConnectionHandler();
 
     void start();
+    void handleClient(TCPStream*);
 };
 
 #endif /* CONNECTIONHANDLER_H_ */

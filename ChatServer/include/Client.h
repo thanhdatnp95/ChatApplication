@@ -8,6 +8,7 @@
 
 #include <string>
 #include <ctime>
+#include "TCPStream.h"
 
 using namespace std;
 
@@ -18,9 +19,10 @@ class Client
     string IPAddr;
     string MACAddr;
     int status;
+    TCPStream* stream;
 
 public:
-    Client(int, string, string, string);
+    Client(int, TCPStream*, string, string);
 
     int getID();
     string getAlias();
@@ -30,6 +32,8 @@ public:
     string getMACAddr();
     int getStatus();
     void setStatus(int);
+    TCPStream* getStream();
+    void setStream(TCPStream*);
 };
 
 #endif /* CLIENT_H_ */

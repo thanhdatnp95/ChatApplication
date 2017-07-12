@@ -44,3 +44,33 @@ void Group::removeMem(int id)
         }
     }
 }
+
+int Group::checkExistingMem(int clientID)
+{
+    int size = lstClient.size();
+    for (int i = 0; i < size; i++)
+    {
+        if (lstClient.at(i)->getID() == clientID)
+            return 1;
+    }
+
+    return 0;
+}
+
+void Group::broadcastMessage(Client* client, string msg)
+{
+    int size = lstClient.size();
+    string sendMsg = "Group chat::" + client->getAlias() + "::" + msg;
+
+    for (int i = 0; i < size; i++)
+    {
+        Client* remoteClient = lstClient.at(i);
+        int status = remoteClient->getStatus();
+        TCPStream* stream = remoteClient->getStream();
+
+        if (status == ONLINE && stream != NULL)
+        {
+            stream->send(sendMsg.c_str(), sendMsg.length());
+        }
+    }
+}

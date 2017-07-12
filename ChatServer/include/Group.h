@@ -21,8 +21,10 @@ public:
     void setName(string);
     int getNumOfMem();
 
-    void addMem(Client*)
+    void addMem(Client*);
     void removeMem(int);
-}
+    int checkExistingMem(int);
+    void broadcastMessage(Client*, string);
+};
 
 #endif /* GROUP_H_ */

@@ -1,10 +1,11 @@
 #include "Client.h"
 
-Client::Client(int id, string alias, string ip, string mac)
+Client::Client(int id, TCPStream* stream, string alias, string mac)
 {
     this->id = id;
+    this->stream = stream;
     this->alias = alias;
-    this->IPAddr = ip;
+    this->IPAddr = stream->getPeerIP();
     this->MACAddr = mac;
     status = ONLINE;
 }
@@ -39,7 +40,7 @@ string Client::getMACAddr()
     return MACAddr;
 }
 
-string Client::getStatus()
+int Client::getStatus()
 {
     return status;
 }
@@ -49,23 +50,12 @@ void Client::setStatus(int status)
     this->status = status;
 }
 
-void Client::handleConnection(TCPStream* stream)
+TCPStream* Client::getStream()
 {
-    char rcvBuffer[BUFFER_SIZE];
-    int rcvMsgSize;
-    // clock_t start;
-    // double duration = 0;
-
-    // start = clock();
-    while ((recvMsgSize = stream->recv(echoBuffer, BUFFER_SIZE)) > 0)
-    {
-        // duration = (clock() - start) / (double) CLOCKS_PER_SEC;
-        // if (duration > KEEP_ALIVE_INTV)
-        // {
-        //     break;
-        // }
-        stream->send(echoBuffer, recvMsgSize);
-    }
-    setStatus(OFFLINE);
+    return this->stream;
 }
 
+void Client::setStream(TCPStream* stream)
+{
+    this->stream = stream;
+}
