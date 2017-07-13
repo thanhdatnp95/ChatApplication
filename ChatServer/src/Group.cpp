@@ -60,7 +60,7 @@ int Group::checkExistingMem(int clientID)
 void Group::broadcastMessage(Client* client, string msg)
 {
     int size = lstClient.size();
-    string sendMsg = "Group chat::" + client->getAlias() + "::" + msg;
+    string sendMsg = getName() + "::" + client->getAlias() + "::" + msg;
 
     for (int i = 0; i < size; i++)
     {

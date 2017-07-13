@@ -71,42 +71,47 @@ void ConnectionHandler::handleClient(TCPStream* stream)
 {
     char buffer[BUFFER_SIZE];
     int rcvMsgSize;
+    string rcvMsg;
     Client* client = NULL;
 
     while ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) > 0)
-    { 
-        if (buffer == HEADER_CONNECT)
-        {        
+    {
+        buffer[rcvMsgSize] = '\0';
+        rcvMsg = buffer;
+
+        if (rcvMsg == HEADER_CONNECT)
+        {               
             if ((client = updateClient(stream)) == NULL)
                 break;
         }
-        else if (buffer == HEADER_KEEP_ALIVE)
+        else if (rcvMsg == HEADER_KEEP_ALIVE)
         {
             //Reset timer
         }
-        else if (buffer == HEADER_GROUP_REQ)
+        else if (rcvMsg == HEADER_GROUP_REQ)
         {
             if (updateGroup(client) != 0)
                 break;
         }
-        else if (buffer == HEADER_SINGLE_CHAT)
+        else if (rcvMsg == HEADER_SINGLE_CHAT)
         {
             if (requestSingle(client) != 0)
                 break;
         }
-        else if (buffer == HEADER_GROUP_CHAT)
+        else if (rcvMsg == HEADER_GROUP_CHAT)
         {
             if (requestGroup(client) != 0)
                 break;
         }
         else
         {
-            cerr << "Received: " << buffer << endl;
+            cerr << "Received: " << rcvMsg << endl;
         }
     }
 
     if (client != NULL)
     {
+        cout << "[OFFLINE]: " << client->getMACAddr() << "(" << client->getAlias() << ")" << endl;
         client->setStatus(OFFLINE);
         client->setStream(NULL);
     }
@@ -114,17 +119,26 @@ void ConnectionHandler::handleClient(TCPStream* stream)
 
 Client* ConnectionHandler::updateClient(TCPStream* stream)
 {
-    string MACAddr;
-    if (stream->receive(&MACAddr[0], BUFFER_SIZE) == 0)
+    string msg = "OK";
+    stream->send(msg.c_str(), msg.length());
+
+    char buffer[BUFFER_SIZE];
+    int rcvMsgSize;
+
+    if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) == 0)
         return NULL;
-    
+    buffer[rcvMsgSize] = '\0';
+    string MACAddr = buffer;
+    string alias;
+
     int size = lstClient.size();
     for (int i = 0; i < size; i++)
     {
         if (lstClient.at(i)->getMACAddr() == MACAddr)
         {
             Client* client = lstClient.at(i);
-            string alias = client->getAlias();
+            alias = client->getAlias();
+            cout << "[ONLINE]: " << MACAddr << " (" << alias << ")" << endl;
 
             stream->send(alias.c_str(), alias.length());
             client->setIPAddr(stream->getPeerIP());
@@ -134,13 +148,15 @@ Client* ConnectionHandler::updateClient(TCPStream* stream)
         }
     }
 
-    string msg = "NEW CLIENT";
+    msg = "NEW CLIENT";
     stream->send(msg.c_str(), msg.length());
 
-    string alias;
-    if (stream->receive(&alias[0], BUFFER_SIZE) == 0)
+    if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) == 0)
         return NULL;    
-    
+    buffer[rcvMsgSize] = '\0';
+    alias = buffer;
+    cout << "[ONLINE]: " << MACAddr << "(" << alias << ")" << endl;
+
     Client* client = new Client(clientID++, stream, alias, MACAddr);
     lstClient.push_back(client);
 
@@ -156,16 +172,27 @@ int ConnectionHandler::updateGroup(Client* client)
 
     TCPStream* stream = client->getStream();
     string sendMsg = "What do you want";
+    char buffer[BUFFER_SIZE];
+    int rcvMsgSize;
     string rcvMsg;
+
     stream->send(sendMsg.c_str(), sendMsg.length());
-    if (stream->receive(&rcvMsg[0], BUFFER_SIZE) == 0)
-        return -1;    
+
+    if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) == 0)
+        return -1;
+    buffer[rcvMsgSize]= '\0';
+    rcvMsg = buffer;
+
     if (rcvMsg == "Create Group")
     {
         sendMsg = "Which Group";
         stream->send(sendMsg.c_str(), sendMsg.length());
-        if (stream->receive(&rcvMsg[0], BUFFER_SIZE) == 0)
-            return -1; 
+
+        if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) == 0)
+            return -1;
+        buffer[rcvMsgSize]= '\0';
+        rcvMsg = buffer; 
+
         Group* group = checkExistingGroup(rcvMsg);
         if (group == NULL)
         {
@@ -175,6 +202,7 @@ int ConnectionHandler::updateGroup(Client* client)
 
             sendMsg = "Create group successfully";
             stream->send(sendMsg.c_str(), sendMsg.length());
+            cout << "[GROUP]: Created group: " << rcvMsg << " (" << client->getAlias() << ")" << endl;
         }
         else
         {
@@ -186,8 +214,12 @@ int ConnectionHandler::updateGroup(Client* client)
     {
         sendMsg = "Which Group";
         stream->send(sendMsg.c_str(), sendMsg.length());
-        if (stream->receive(&rcvMsg[0], BUFFER_SIZE) == 0)
+
+        if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) == 0)
             return -1;
+        buffer[rcvMsgSize]= '\0';
+        rcvMsg = buffer;
+
         Group* group = checkExistingGroup(rcvMsg);
         if (group == NULL)
         {
@@ -206,6 +238,7 @@ int ConnectionHandler::updateGroup(Client* client)
                 group->addMem(client);
                 sendMsg = "Join in group successfully";
                 stream->send(sendMsg.c_str(), sendMsg.length());
+                cout << "[GROUP]: Added a member into group: " << rcvMsg << " (" << client->getAlias() << ")" << endl;
             }
         }
     }
@@ -213,8 +246,12 @@ int ConnectionHandler::updateGroup(Client* client)
     {
         sendMsg = "Which Group";
         stream->send(sendMsg.c_str(), sendMsg.length());
-        if (stream->receive(&rcvMsg[0], BUFFER_SIZE) == 0)
+
+        if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) == 0)
             return -1;
+        buffer[rcvMsgSize]= '\0';
+        rcvMsg = buffer;
+
         Group* group = checkExistingGroup(rcvMsg);
         if (group == NULL)
         {
@@ -228,6 +265,7 @@ int ConnectionHandler::updateGroup(Client* client)
                 group->removeMem(client->getID());
                 sendMsg = "Leave group successfully";
                 stream->send(sendMsg.c_str(), sendMsg.length());
+                cout << "[GROUP]: Removed a member from group: " << rcvMsg << " (" << client->getAlias() << ")" << endl;
             }
             else
             {
@@ -270,10 +308,16 @@ int ConnectionHandler::requestSingle(Client* client)
 
     TCPStream* stream = client->getStream();
     string sendMsg = "Which client";
+    char buffer[BUFFER_SIZE];
+    int rcvMsgSize;
     string rcvMsg;
+
     stream->send(sendMsg.c_str(), sendMsg.length());
-    if (stream->receive(&rcvMsg[0], BUFFER_SIZE) == 0)
-        return -1;    
+
+    if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) == 0)
+        return -1;
+    buffer[rcvMsgSize]= '\0';
+    rcvMsg = buffer;  
     
     Client* remoteClient = checkExistingClient(rcvMsg);
     if (remoteClient != NULL)
@@ -294,6 +338,7 @@ int ConnectionHandler::requestSingle(Client* client)
         sendMsg = "Invalid alias";
         stream->send(sendMsg.c_str(), sendMsg.length());
     }
+
     return 0;
 }
 
@@ -306,10 +351,16 @@ int ConnectionHandler::requestGroup(Client* client)
 
     TCPStream* stream = client->getStream();
     string sendMsg = "Which group";
+    char buffer[BUFFER_SIZE];
+    int rcvMsgSize;
     string rcvMsg;
+
     stream->send(sendMsg.c_str(), sendMsg.length());
-    if (stream->receive(&rcvMsg[0], BUFFER_SIZE) == 0)
-        return -1;    
+
+    if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) == 0)
+        return -1;
+    buffer[rcvMsgSize]= '\0';
+    rcvMsg = buffer;   
     
     Group* group = checkExistingGroup(rcvMsg);
     if (group == NULL)
@@ -323,15 +374,21 @@ int ConnectionHandler::requestGroup(Client* client)
         {            
             sendMsg = "Which request";
             stream->send(sendMsg.c_str(), sendMsg.length());
-            if (stream->receive(&rcvMsg[0], BUFFER_SIZE) == 0)
+
+            if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) == 0)
                 return -1;
+            buffer[rcvMsgSize]= '\0';
+            rcvMsg = buffer;
 
             if (rcvMsg == "Send message")
             {
                 sendMsg = "Which message";
                 stream->send(sendMsg.c_str(), sendMsg.length());
-                if (stream->receive(&rcvMsg[0], BUFFER_SIZE) == 0)
+
+                if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) == 0)
                     return -1;
+                buffer[rcvMsgSize]= '\0';
+                rcvMsg = buffer;
                 
                 group->broadcastMessage(client, rcvMsg);
             }
