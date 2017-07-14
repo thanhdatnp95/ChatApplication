@@ -404,7 +404,7 @@ int ConnectionHandler::requestSingle(Client* client)
         }
         else
         {
-            sendMsg = rcvMsg + " is currently offline";
+            sendMsg = "[OK]" + rcvMsg + " is currently offline";
             stream->send(sendMsg.c_str(), sendMsg.length());
         }
     }
