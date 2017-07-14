@@ -3,6 +3,8 @@
 
 #define        SERVER_PORT                  8888
 #define        BUFFER_SIZE                  1024
+#define        CONNECTED                       1
+#define        DISCONNECTED                    0
 #define        HEADER_CONNECT          "Connect"
 #define        HEADER_KEEP_ALIVE     "KeepAlive"       
 #define        HEADER_GROUP_REQ    "ModifyGroup"
@@ -12,6 +14,7 @@
 #include <string>
 #include <iostream>
 #include <vector>
+#include <pthread.h>
 #include "TCPConnector.h"
 #include "TCPStream.h"
 
@@ -22,14 +25,21 @@ class ConnectToServer
     string alias;
     TCPConnector* connector;
     TCPStream* stream;
+    static int status;
 
-    int groupOpt(string, string);
+    ConnectToServer();
+
+    int groupOperation(string, string);
     int split(const string&, vector<string>&);
 
 public:
-    ConnectToServer();
+    ConnectToServer(ConnectToServer const&) = delete;
+    void operator=(ConnectToServer const&) = delete;
+
+    static ConnectToServer& getInstance();
     string getAlias();
     int connect(string);
+    int receiveMessage();
     int headerCompare(string&);
     int createGroup(string);
     int joinGroup(string);
@@ -37,6 +47,7 @@ public:
     int singleChat(string);
     int groupChat(string);
     void disconnect();
+    int getStatus();
 
 };
 

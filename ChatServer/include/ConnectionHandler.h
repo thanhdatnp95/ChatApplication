@@ -10,6 +10,7 @@
 
 #include <iostream>
 #include <cstdlib>
+#include <ctime>
 #include "Client.h"
 #include "Group.h"
 #include "TCPStream.h"

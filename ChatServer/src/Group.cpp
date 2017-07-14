@@ -60,17 +60,11 @@ int Group::checkExistingMem(int clientID)
 void Group::broadcastMessage(Client* client, string msg)
 {
     int size = lstClient.size();
-    string sendMsg = getName() + "::" + client->getAlias() + "::" + msg;
+    string sendMsg = getName() + "::" + client->getAlias() + ": " + msg;
 
     for (int i = 0; i < size; i++)
     {
         Client* remoteClient = lstClient.at(i);
-        int status = remoteClient->getStatus();
-        TCPStream* stream = remoteClient->getStream();
-
-        if (status == ONLINE && stream != NULL)
-        {
-            stream->send(sendMsg.c_str(), sendMsg.length());
-        }
+        remoteClient->sendMessage(sendMsg);
     }
 }

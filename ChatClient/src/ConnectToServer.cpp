@@ -1,5 +1,25 @@
 #include "ConnectToServer.h"
 
+string groupOpt;
+string groupName;
+string request;
+string message;
+string clientAlias;
+int done;
+
+int ConnectToServer::status = DISCONNECTED;
+
+ConnectToServer& ConnectToServer::getInstance()
+{
+    static ConnectToServer instance;
+    return instance;
+}
+
+int  ConnectToServer::getStatus()
+{
+    return ConnectToServer::status;
+}
+
 ConnectToServer::ConnectToServer()
 {
     alias = "";
@@ -12,6 +32,126 @@ string ConnectToServer::getAlias()
     return this->alias;
 }
 
+void* threadMain(void*)
+{
+    pthread_detach(pthread_self()); 
+
+    ConnectToServer& client = ConnectToServer::getInstance();
+    client.receiveMessage();
+
+    return NULL;
+}
+
+int startWith(string str, string prefix)
+{
+   if (!str.compare(0, prefix.size(), prefix))
+   {
+        return 1;
+   }
+   else
+   {
+        return 0;
+   }
+}
+
+int ConnectToServer::receiveMessage()
+{
+    if (stream == NULL)
+    {
+        return -1;
+    }
+
+    char buffer[BUFFER_SIZE];
+    int rcvMsgSize;
+    string rcvMsg;
+    string sendMsg;
+
+
+    while ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) > 0)
+    {
+        buffer[rcvMsgSize] = '\0';
+        rcvMsg = buffer;
+
+        if (rcvMsg == "OK")
+        {
+            cout << "Connected successfully to Server" << endl;
+            cout << "Enter user: ";
+            getline(cin, sendMsg);
+            stream->send(sendMsg.c_str(), sendMsg.length());
+        }
+        else if (startWith(rcvMsg, "NEW CLIENT"))
+        {
+            cout << "Enter alias: ";
+            getline(cin, sendMsg);
+            stream->send(sendMsg.c_str(), sendMsg.length());            
+            alias = sendMsg;
+            status = CONNECTED;
+        }
+        else if (rcvMsg == "GROUP OPT")
+        {
+            sendMsg = groupOpt;
+            stream->send(sendMsg.c_str(), sendMsg.length());
+        }
+        else if (rcvMsg == "WHICH GROUP")
+        {
+            sendMsg = groupName;
+            stream->send(sendMsg.c_str(), sendMsg.length());
+        }
+        else if (rcvMsg == "WHICH CLIENT")
+        {
+            sendMsg = clientAlias;
+            stream->send(sendMsg.c_str(), sendMsg.length());
+        }
+        else if (rcvMsg == "CLIENT REQUEST")
+        {
+            sendMsg = request;
+            stream->send(sendMsg.c_str(), sendMsg.length());
+        }
+        else if (rcvMsg == "GROUP REQUEST")
+        {
+            sendMsg = request;
+            stream->send(sendMsg.c_str(), sendMsg.length());
+        }
+        else if (rcvMsg == "CLIENT MESSAGE")
+        {
+            sendMsg = message;
+            stream->send(sendMsg.c_str(), sendMsg.length());
+        }
+        else if (rcvMsg == "GROUP MESSAGE")
+        {
+            sendMsg = message;
+            stream->send(sendMsg.c_str(), sendMsg.length());
+        }
+        else if (startWith(rcvMsg, "ALIAS"))
+        {
+            vector<string> v;
+            if (split(rcvMsg, v) != 0)
+            {
+                cout << "Invalid received alias" << endl;
+                return -1;
+            }
+            alias = v.at(1);
+            status = CONNECTED;
+        }
+        else if (startWith(rcvMsg, "[OK]"))
+        {
+            if (rcvMsg.length() > 4)
+            {
+                cout << rcvMsg.substr(4) << endl;
+            }
+
+            done = 1;
+        }
+        else
+        {
+            cout << rcvMsg << endl;
+        }
+    }    
+    status = DISCONNECTED;
+
+    return 0;
+}
+
 int ConnectToServer::connect(string serverIP)
 {
     connector = new TCPConnector();
@@ -20,61 +160,24 @@ int ConnectToServer::connect(string serverIP)
     if (!stream)
     {
         return -1;
-    }    
+    }
 
-    char buffer[BUFFER_SIZE];
-    int rcvMsgSize;
-    string sendMsg;
-    string rcvMsg;
+    pthread_t threadID;
+    if (pthread_create(&threadID, NULL, threadMain, NULL) != 0)
+    {
+        cerr << "Could not create thread" << endl;
+        return -1;
+    }
 
-    sendMsg = HEADER_CONNECT;
+    string sendMsg = HEADER_CONNECT;
     stream->send(sendMsg.c_str(), sendMsg.length());
 
-    if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) == 0)
-    {
-        return -1;
-    }
-    buffer[rcvMsgSize] = '\0';
-    rcvMsg = buffer;
-
-    if (rcvMsg == "OK")
-    {
-        cout << "Connected successfully to Server" << endl;
-        cout << "Enter user: ";
-        getline(cin, sendMsg);
-        stream->send(sendMsg.c_str(), sendMsg.length());
-
-        if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) == 0)
-        {
-            return -1;
-        }
-        buffer[rcvMsgSize] = '\0';
-        rcvMsg = buffer;
-
-        if (rcvMsg == "NEW CLIENT")
-        {
-            cout << "Enter alias: ";
-            getline(cin, sendMsg);
-            stream->send(sendMsg.c_str(), sendMsg.length());
-
-            alias = sendMsg;
-        }
-        else
-        {            
-            alias = rcvMsg;
-        }        
-
-        return 0;        
-    }
-    else
-    {
-        return -1;
-    }
-    
+    return 0;
 }
 
-int ConnectToServer::groupOpt(string group, string opt)
+int ConnectToServer::groupOperation(string group, string opt)
 {
+    done = 0;
     if (stream == NULL)
     {
         return -1;
@@ -84,59 +187,20 @@ int ConnectToServer::groupOpt(string group, string opt)
     {
         return -1;
     }
+
+    groupName = group;
+    groupOpt = opt;
+
     string sendMsg = HEADER_GROUP_REQ;
     char buffer[BUFFER_SIZE];
     int rcvMsgSize;
     string rcvMsg;
 
     stream->send(sendMsg.c_str(), sendMsg.length());
-    
-    if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) == 0)
-    {
-        return -1;
-    }
-    buffer[rcvMsgSize] = '\0';
-    rcvMsg = buffer;
 
-    if (rcvMsg == "What do you want")
-    {
-        sendMsg = opt;
+    while(!done);
 
-        stream->send(sendMsg.c_str(), sendMsg.length());
-    
-        if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) == 0)
-        {
-            return -1;
-        }
-        buffer[rcvMsgSize] = '\0';
-        rcvMsg = buffer;
-
-        if (rcvMsg == "Which Group")
-        {
-            sendMsg = group;
-
-            stream->send(sendMsg.c_str(), sendMsg.length());
-        
-            if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) == 0)
-            {
-                return -1;
-            }
-            buffer[rcvMsgSize] = '\0';
-            rcvMsg = buffer;
-
-            cout << rcvMsg << endl;
-
-            return 0;
-        }
-        else
-        {
-            return -1;
-        }
-    }
-    else
-    {
-        return -1;
-    }
+    return 0;
 }
 
 int ConnectToServer::split(const string& s, vector<string>& v)
@@ -155,7 +219,6 @@ int ConnectToServer::split(const string& s, vector<string>& v)
     return 0;
 }
 	
-
 int ConnectToServer::headerCompare(string& cmd)
 {
     vector<string> lstHeader = { "schat ", "gchat ", "cgroup ", "jgroup ", "lgroup " , "exit" };
@@ -182,29 +245,31 @@ int ConnectToServer::headerCompare(string& cmd)
 
 int ConnectToServer::createGroup(string group)
 {
-    return groupOpt(group, "Create Group");
+    return groupOperation(group, "Create Group");
 }
 
 int ConnectToServer::joinGroup(string group)
 {
-    return groupOpt(group, "Join in Group");
+    return groupOperation(group, "Join in Group");
 }
 
 int ConnectToServer::leaveGroup(string group)
 {
-    return groupOpt(group, "Leave Group");
+    return groupOperation(group, "Leave Group");
 }
 
 int ConnectToServer::singleChat(string cmd)
 {
+    done = 0;
     vector<string> v;
     if (split(cmd, v) != 0)
     {
         return -1;
     }
 
-    string alias = v.at(0);
-    string msg = v.at(1);
+    clientAlias = v.at(0);
+    message = v.at(1);
+    request = "Send message";
 
     char buffer[BUFFER_SIZE];
     int rcvMsgSize;
@@ -213,58 +278,24 @@ int ConnectToServer::singleChat(string cmd)
 
     sendMsg = HEADER_SINGLE_CHAT;
     stream->send(sendMsg.c_str(), sendMsg.length());
+    while(!done);
 
-    if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) == 0)
-    {
-        return -1;
-    }
-    buffer[rcvMsgSize] = '\0';
-    rcvMsg = buffer;  
-
-    if (rcvMsg == "Which client")
-    {
-        sendMsg = alias;
-        stream->send(sendMsg.c_str(), sendMsg.length());
-
-        if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) == 0)
-        {
-            return -1;
-        }   
-        buffer[rcvMsgSize] = '\0';
-        rcvMsg = buffer;
-
-        if (rcvMsg == "Invalid alias")
-        {
-            cout << "Invalid user" << endl;
-        }
-        else if (rcvMsg == "Offline")
-        {
-            cout << alias << " is currently offline" << endl;
-        }
-        else
-        {
-            //Not implemented yet
-            cout << "Sending to " << rcvMsg << endl;
-        }
-
-        return 0; 
-    } 
-    else
-    {
-        return -1;
-    }
+    return 0;
 }
 
 int ConnectToServer::groupChat(string cmd)
 {
+    done = 0;
+
     vector<string> v;
     if (split(cmd, v) != 0)
     {
         return -1;
     }
 
-    string group = v.at(0);
-    string msg = v.at(1);
+    groupName = v.at(0);
+    message = v.at(1);
+    request = "Send message";
 
     char buffer[BUFFER_SIZE];
     int rcvMsgSize;
@@ -273,58 +304,9 @@ int ConnectToServer::groupChat(string cmd)
 
     sendMsg = HEADER_GROUP_CHAT;
     stream->send(sendMsg.c_str(), sendMsg.length());
+    while(!done);
 
-    if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) == 0)
-    {
-        return -1;
-    }
-    buffer[rcvMsgSize] = '\0';
-    rcvMsg = buffer;  
-
-    if (rcvMsg == "Which group")
-    {
-        sendMsg = group;
-        stream->send(sendMsg.c_str(), sendMsg.length());
-
-        if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) == 0)
-        {
-            return -1;
-        }   
-        buffer[rcvMsgSize] = '\0';
-        rcvMsg = buffer;
-
-        if (rcvMsg == "Which request")
-        {
-            sendMsg = "Send message";
-            stream->send(sendMsg.c_str(), sendMsg.length());
-
-            if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) == 0)
-            {
-                return -1;
-            }   
-            buffer[rcvMsgSize] = '\0';
-            rcvMsg = buffer;
-
-            if (rcvMsg == "Which message")
-            {
-                stream->send(msg.c_str(), sendMsg.length());
-            }
-            else
-            {
-                return -1;
-            }
-        }
-        else
-        {
-            cout << rcvMsg << endl;
-        }
-
-        return 0; 
-    } 
-    else
-    {
-        return -1;
-    }
+    return 0;
 }
 
 void ConnectToServer::disconnect()

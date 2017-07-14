@@ -6,6 +6,7 @@ Client::Client(int id, TCPStream* stream, string alias, string mac)
     this->stream = stream;
     this->alias = alias;
     this->IPAddr = stream->getPeerIP();
+    this->port = PORT;
     this->MACAddr = mac;
     status = ONLINE;
 }
@@ -58,4 +59,12 @@ TCPStream* Client::getStream()
 void Client::setStream(TCPStream* stream)
 {
     this->stream = stream;
+}
+
+void Client::sendMessage(string msg)
+{
+    if (status == ONLINE && stream != NULL)
+    {
+        stream->send(msg.c_str(), msg.length());
+    }
 }

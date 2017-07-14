@@ -4,6 +4,7 @@
 #define    ONLINE                          1
 #define    OFFLINE                         0
 #define    KEEP_ALIVE_INTV                30 //Keep alive interval (s)
+#define    PORT                         9999
 #define    BUFFER_SIZE                  1024
 
 #include <string>
@@ -17,6 +18,7 @@ class Client
     int id;
     string alias;
     string IPAddr;
+    int port;
     string MACAddr;
     int status;
     TCPStream* stream;
@@ -34,6 +36,7 @@ public:
     void setStatus(int);
     TCPStream* getStream();
     void setStream(TCPStream*);
+    void sendMessage(string);
 };
 
 #endif /* CLIENT_H_ */

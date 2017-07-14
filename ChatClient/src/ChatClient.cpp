@@ -2,24 +2,20 @@
 
 int main()
 {
-    ConnectToServer client;
+    ConnectToServer& client = ConnectToServer::getInstance();
 
     string serverIP;
     cout << "Enter Server IP: ";
     getline(cin, serverIP);
     if (client.connect(serverIP) == 0)
     {
+        while(!client.getStatus());
+
         string cmd;
         cout << "Your alias: " << client.getAlias() << endl;
-        // cout << "1. Single chat" << endl;
-        // cout << "2. Group chat" << endl;
-        // cout << "3. Create group" << endl;
-        // cout << "4. Join in group" << endl;
-        // cout << "5. Leave group" << endl;
 
-        while (true)
+        while (client.getStatus() == CONNECTED)
         {
-            cout << "Command: ";
             getline(cin, cmd);
 
             switch (client.headerCompare(cmd))
@@ -62,6 +58,7 @@ int main()
                 break;
             }
         }
+        cout << "Disconnected" << endl;
     }
     else
     {

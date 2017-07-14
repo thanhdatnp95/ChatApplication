@@ -111,7 +111,21 @@ void ConnectionHandler::handleClient(TCPStream* stream)
 
     if (client != NULL)
     {
-        cout << "[OFFLINE]: " << client->getMACAddr() << "(" << client->getAlias() << ")" << endl;
+        time_t currentTime;
+        struct tm *localTime;
+
+        time( &currentTime );                   // Get the current time
+        localTime = localtime( &currentTime );  // Convert the current time to the local time
+
+        int Day    = localTime->tm_mday;
+        int Month  = localTime->tm_mon + 1;
+        int Year   = localTime->tm_year + 1900;
+        int Hour   = localTime->tm_hour;
+        int Min    = localTime->tm_min;
+        int Sec    = localTime->tm_sec;
+
+        cout << "[" << Month << "/" << Day << "/" << Year << "-" << Hour << ":" << Min << ":" << Sec << "]"
+             << "[OFFLINE]: " << client->getMACAddr() << "(" << client->getAlias() << ")" << endl;
         client->setStatus(OFFLINE);
         client->setStream(NULL);
     }
@@ -131,6 +145,19 @@ Client* ConnectionHandler::updateClient(TCPStream* stream)
     string MACAddr = buffer;
     string alias;
 
+    time_t currentTime;
+    struct tm *localTime;
+
+    time( &currentTime );                   // Get the current time
+    localTime = localtime( &currentTime );  // Convert the current time to the local time
+
+    int Day    = localTime->tm_mday;
+    int Month  = localTime->tm_mon + 1;
+    int Year   = localTime->tm_year + 1900;
+    int Hour   = localTime->tm_hour;
+    int Min    = localTime->tm_min;
+    int Sec    = localTime->tm_sec;
+
     int size = lstClient.size();
     for (int i = 0; i < size; i++)
     {
@@ -138,8 +165,10 @@ Client* ConnectionHandler::updateClient(TCPStream* stream)
         {
             Client* client = lstClient.at(i);
             alias = client->getAlias();
-            cout << "[ONLINE]: " << MACAddr << " (" << alias << ")" << endl;
+            cout << "[" << Month << "/" << Day << "/" << Year << "-" << Hour << ":" << Min << ":" << Sec << "]"
+                 << "[ONLINE]: " << MACAddr << " (" << alias << ")" << endl;
 
+            alias = "ALIAS::" + alias;
             stream->send(alias.c_str(), alias.length());
             client->setIPAddr(stream->getPeerIP());
             client->setStatus(ONLINE);
@@ -155,7 +184,8 @@ Client* ConnectionHandler::updateClient(TCPStream* stream)
         return NULL;    
     buffer[rcvMsgSize] = '\0';
     alias = buffer;
-    cout << "[ONLINE]: " << MACAddr << "(" << alias << ")" << endl;
+    cout << "[" << Month << "/" << Day << "/" << Year << "-" << Hour << ":" << Min << ":" << Sec << "]"
+         << "[ONLINE]: " << MACAddr << "(" << alias << ")" << endl;
 
     Client* client = new Client(clientID++, stream, alias, MACAddr);
     lstClient.push_back(client);
@@ -171,7 +201,7 @@ int ConnectionHandler::updateGroup(Client* client)
     }
 
     TCPStream* stream = client->getStream();
-    string sendMsg = "What do you want";
+    string sendMsg = "GROUP OPT";
     char buffer[BUFFER_SIZE];
     int rcvMsgSize;
     string rcvMsg;
@@ -182,10 +212,23 @@ int ConnectionHandler::updateGroup(Client* client)
         return -1;
     buffer[rcvMsgSize]= '\0';
     rcvMsg = buffer;
+    
+    time_t currentTime;
+    struct tm *localTime;
+
+    time( &currentTime );                   // Get the current time
+    localTime = localtime( &currentTime );  // Convert the current time to the local time
+
+    int Day    = localTime->tm_mday;
+    int Month  = localTime->tm_mon + 1;
+    int Year   = localTime->tm_year + 1900;
+    int Hour   = localTime->tm_hour;
+    int Min    = localTime->tm_min;
+    int Sec    = localTime->tm_sec;
 
     if (rcvMsg == "Create Group")
     {
-        sendMsg = "Which Group";
+        sendMsg = "WHICH GROUP";
         stream->send(sendMsg.c_str(), sendMsg.length());
 
         if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) == 0)
@@ -200,19 +243,20 @@ int ConnectionHandler::updateGroup(Client* client)
             group->addMem(client);
             lstGroup.push_back(group);
 
-            sendMsg = "Create group successfully";
+            sendMsg = "[OK]Create group successfully";
             stream->send(sendMsg.c_str(), sendMsg.length());
-            cout << "[GROUP]: Created group: " << rcvMsg << " (" << client->getAlias() << ")" << endl;
+            cout << "[" << Month << "/" << Day << "/" << Year << "-" << Hour << ":" << Min << ":" << Sec << "]"
+                 << "[GROUP]: Created group: " << rcvMsg << " (" << client->getAlias() << ")" << endl;
         }
         else
         {
-            sendMsg = "Group is existing";
+            sendMsg = "[OK]Group is existing";
             stream->send(sendMsg.c_str(), sendMsg.length());
         }
     }
     else if (rcvMsg == "Join in Group")
     {
-        sendMsg = "Which Group";
+        sendMsg = "WHICH GROUP";
         stream->send(sendMsg.c_str(), sendMsg.length());
 
         if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) == 0)
@@ -223,28 +267,29 @@ int ConnectionHandler::updateGroup(Client* client)
         Group* group = checkExistingGroup(rcvMsg);
         if (group == NULL)
         {
-            sendMsg = "Group is not existing";
+            sendMsg = "[OK]Group is not existing";
             stream->send(sendMsg.c_str(), sendMsg.length());
         }
         else
         {
             if (group->checkExistingMem(client->getID()))
             {
-                sendMsg = "You are already in group";
+                sendMsg = "[OK]You are already in group";
                 stream->send(sendMsg.c_str(), sendMsg.length());
             }
             else
             {
                 group->addMem(client);
-                sendMsg = "Join in group successfully";
+                sendMsg = "[OK]Join in group successfully";
                 stream->send(sendMsg.c_str(), sendMsg.length());
-                cout << "[GROUP]: Added a member into group: " << rcvMsg << " (" << client->getAlias() << ")" << endl;
+                cout << "[" << Month << "/" << Day << "/" << Year << "-" << Hour << ":" << Min << ":" << Sec << "]"
+                     << "[GROUP]: Added a member into group: " << rcvMsg << " (" << client->getAlias() << ")" << endl;
             }
         }
     }
     else if (rcvMsg == "Leave Group")
     {
-        sendMsg = "Which Group";
+        sendMsg = "WHICH GROUP";
         stream->send(sendMsg.c_str(), sendMsg.length());
 
         if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) == 0)
@@ -255,7 +300,7 @@ int ConnectionHandler::updateGroup(Client* client)
         Group* group = checkExistingGroup(rcvMsg);
         if (group == NULL)
         {
-            sendMsg = "Group is not existing";
+            sendMsg = "[OK]Group is not existing";
             stream->send(sendMsg.c_str(), sendMsg.length());
         }
         else
@@ -263,13 +308,14 @@ int ConnectionHandler::updateGroup(Client* client)
             if (group->checkExistingMem(client->getID()))
             {
                 group->removeMem(client->getID());
-                sendMsg = "Leave group successfully";
+                sendMsg = "[OK]Leave group successfully";
                 stream->send(sendMsg.c_str(), sendMsg.length());
-                cout << "[GROUP]: Removed a member from group: " << rcvMsg << " (" << client->getAlias() << ")" << endl;
+                cout << "[" << Month << "/" << Day << "/" << Year << "-" << Hour << ":" << Min << ":" << Sec << "]"
+                     << "[GROUP]: Removed a member from group: " << rcvMsg << " (" << client->getAlias() << ")" << endl;
             }
             else
             {
-                sendMsg = "You are not in this group";
+                sendMsg = "[OK]You are not in this group";
                 stream->send(sendMsg.c_str(), sendMsg.length());
             }
         }
@@ -307,7 +353,7 @@ int ConnectionHandler::requestSingle(Client* client)
     }
 
     TCPStream* stream = client->getStream();
-    string sendMsg = "Which client";
+    string sendMsg = "WHICH CLIENT";
     char buffer[BUFFER_SIZE];
     int rcvMsgSize;
     string rcvMsg;
@@ -321,21 +367,50 @@ int ConnectionHandler::requestSingle(Client* client)
     
     Client* remoteClient = checkExistingClient(rcvMsg);
     if (remoteClient != NULL)
-    {
+    {        
         if (remoteClient->getStatus() == ONLINE)
         {
-            sendMsg = remoteClient->getIPAddr();
+            sendMsg = "CLIENT REQUEST";
             stream->send(sendMsg.c_str(), sendMsg.length());
+
+            if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) == 0)
+                return -1;
+            buffer[rcvMsgSize]= '\0';
+            rcvMsg = buffer;
+
+            if (rcvMsg == "Send message")
+            {
+                sendMsg = "CLIENT MESSAGE";
+                stream->send(sendMsg.c_str(), sendMsg.length());
+
+                if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) == 0)
+                    return -1;
+                buffer[rcvMsgSize]= '\0';
+                rcvMsg = buffer;
+                rcvMsg = client->getAlias() + ": " + rcvMsg;
+                sendMsg = "[OK]";
+                stream->send(sendMsg.c_str(), sendMsg.length());
+
+                remoteClient->sendMessage(rcvMsg);
+            }
+            else if (rcvMsg == "Send file")
+            {
+                //Not implemented yet
+            }
+            else
+            {
+                return -1;
+            }
         }
         else
         {
-            sendMsg = "Offline";
+            sendMsg = rcvMsg + " is currently offline";
             stream->send(sendMsg.c_str(), sendMsg.length());
         }
     }
     else
     {
-        sendMsg = "Invalid alias";
+        sendMsg = "[OK]Invalid alias";
         stream->send(sendMsg.c_str(), sendMsg.length());
     }
 
@@ -350,7 +425,7 @@ int ConnectionHandler::requestGroup(Client* client)
     }
 
     TCPStream* stream = client->getStream();
-    string sendMsg = "Which group";
+    string sendMsg = "WHICH GROUP";
     char buffer[BUFFER_SIZE];
     int rcvMsgSize;
     string rcvMsg;
@@ -365,14 +440,14 @@ int ConnectionHandler::requestGroup(Client* client)
     Group* group = checkExistingGroup(rcvMsg);
     if (group == NULL)
     {       
-        sendMsg = "Invalid group";
+        sendMsg = "[OK]Invalid group";
         stream->send(sendMsg.c_str(), sendMsg.length());
     }
     else
     {
         if (group->checkExistingMem(client->getID()))
         {            
-            sendMsg = "Which request";
+            sendMsg = "GROUP REQUEST";
             stream->send(sendMsg.c_str(), sendMsg.length());
 
             if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) == 0)
@@ -382,13 +457,15 @@ int ConnectionHandler::requestGroup(Client* client)
 
             if (rcvMsg == "Send message")
             {
-                sendMsg = "Which message";
+                sendMsg = "GROUP MESSAGE";
                 stream->send(sendMsg.c_str(), sendMsg.length());
 
                 if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) == 0)
                     return -1;
                 buffer[rcvMsgSize]= '\0';
                 rcvMsg = buffer;
+                sendMsg = "[OK]";
+                stream->send(sendMsg.c_str(), sendMsg.length());
                 
                 group->broadcastMessage(client, rcvMsg);
             }
@@ -403,7 +480,7 @@ int ConnectionHandler::requestGroup(Client* client)
         }
         else
         {
-            sendMsg = "You are not in this group";
+            sendMsg = "[OK]You are not in this group";
             stream->send(sendMsg.c_str(), sendMsg.length());
         }
     }
