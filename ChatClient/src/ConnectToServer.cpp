@@ -4,6 +4,7 @@ string groupOpt;
 string groupName;
 string request;
 string message;
+string filePath;
 string clientAlias;
 int done;
 
@@ -52,6 +53,31 @@ int startWith(string str, string prefix)
    {
         return 0;
    }
+}
+
+int checkDirectory(const char* pathName)
+{
+    struct stat info;
+
+    if(stat( pathName, &info ) != 0)
+    {
+        printf( "cannot access %s\n", pathName );
+        return -1;
+    }        
+    else if (S_ISDIR(info.st_mode))
+    {
+        printf( "%s is a directory\n", pathName );
+        return -1;
+    }        
+    else if (S_ISREG(info.st_mode))
+    {
+        return 0;
+    }
+    else
+    {
+        printf( "%s is NOT a regular file\n", pathName );
+        return -1;
+    }
 }
 
 int ConnectToServer::receiveMessage()
@@ -120,7 +146,6 @@ int ConnectToServer::receiveMessage()
         else if (rcvMsg == "GROUP MESSAGE")
         {
             sendMsg = message;
-            stream->send(sendMsg.c_str(), sendMsg.length());
         }
         else if (startWith(rcvMsg, "ALIAS"))
         {
@@ -191,7 +216,7 @@ int ConnectToServer::groupOperation(string group, string opt)
     groupName = group;
     groupOpt = opt;
 
-    string sendMsg = HEADER_GROUP_REQ;
+    string sendMsg = HEADER_GROUP_MOD;
     char buffer[BUFFER_SIZE];
     int rcvMsgSize;
     string rcvMsg;
@@ -221,7 +246,7 @@ int ConnectToServer::split(const string& s, vector<string>& v)
 	
 int ConnectToServer::headerCompare(string& cmd)
 {
-    vector<string> lstHeader = { "schat ", "gchat ", "cgroup ", "jgroup ", "lgroup " , "exit" };
+    vector<string> lstHeader = { "schat ", "gchat ", "sfile ", "gfile ", "cgroup ", "jgroup ", "lgroup " , "exit" };
     int size = lstHeader.size();
     for (int i = 0; i < size; i++)
     {
@@ -276,7 +301,7 @@ int ConnectToServer::singleChat(string cmd)
     string sendMsg;
     string rcvMsg;
 
-    sendMsg = HEADER_SINGLE_CHAT;
+    sendMsg = HEADER_SINGLE_REQ;
     stream->send(sendMsg.c_str(), sendMsg.length());
     while(!done);
 
@@ -302,7 +327,67 @@ int ConnectToServer::groupChat(string cmd)
     string sendMsg;
     string rcvMsg;
 
-    sendMsg = HEADER_GROUP_CHAT;
+    sendMsg = HEADER_GROUP_REQ;
+    stream->send(sendMsg.c_str(), sendMsg.length());
+    while(!done);
+
+    return 0;
+}
+
+int ConnectToServer::singleFileTransfer(string cmd)
+{
+    done = 0;
+    vector<string> v;
+    if (split(cmd, v) != 0)
+    {
+        return -1;
+    }
+
+    clientAlias = v.at(0);
+    filePath = v.at(1);
+    request = "Send file";
+
+    if (!checkDirectory(filePath.c_str()))
+    {
+        cout << "Sending file..." << endl;
+    }
+
+    char buffer[BUFFER_SIZE];
+    int rcvMsgSize;
+    string sendMsg;
+    string rcvMsg;
+
+    sendMsg = HEADER_SINGLE_REQ;
+    stream->send(sendMsg.c_str(), sendMsg.length());
+    while(!done);
+
+    return 0;
+}
+
+int ConnectToServer::groupFileTransfer(string cmd)
+{
+    done = 0;
+    vector<string> v;
+    if (split(cmd, v) != 0)
+    {
+        return -1;
+    }
+
+    groupName = v.at(0);
+    filePath = v.at(1);
+    request = "Send file";
+
+    if (!checkDirectory(filePath.c_str()))
+    {
+        cout << "Sending file..." << endl;
+    }
+
+    char buffer[BUFFER_SIZE];
+    int rcvMsgSize;
+    string sendMsg;
+    string rcvMsg;
+
+    sendMsg = HEADER_GROUP_REQ;
     stream->send(sendMsg.c_str(), sendMsg.length());
     while(!done);
 

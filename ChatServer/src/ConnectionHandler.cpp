@@ -88,17 +88,17 @@ void ConnectionHandler::handleClient(TCPStream* stream)
         {
             //Reset timer
         }
-        else if (rcvMsg == HEADER_GROUP_REQ)
+        else if (rcvMsg == HEADER_GROUP_MOD)
         {
             if (updateGroup(client) != 0)
                 break;
         }
-        else if (rcvMsg == HEADER_SINGLE_CHAT)
+        else if (rcvMsg == HEADER_SINGLE_REQ)
         {
             if (requestSingle(client) != 0)
                 break;
         }
-        else if (rcvMsg == HEADER_GROUP_CHAT)
+        else if (rcvMsg == HEADER_GROUP_REQ)
         {
             if (requestGroup(client) != 0)
                 break;

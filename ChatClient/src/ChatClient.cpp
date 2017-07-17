@@ -33,24 +33,36 @@ int main()
                 }
                 break;
             case 2:
+                if (client.singleFileTransfer(cmd))
+                {
+                    cout << "Cannot send file to peer" << endl;
+                }
+                break;
+            case 3:
+                if (client.groupFileTransfer(cmd))
+                {
+                    cout << "Cannot send file to group" << endl;
+                }
+                break;
+            case 4:
                 if (client.createGroup(cmd))
                 {
                     cout << "Cannot create this group" << endl;
                 }
                 break;
-            case 3:
+            case 5:
                 if (client.joinGroup(cmd))
                 {
                     cout << "Cannot join in this group" << endl;
                 }
                 break;
-            case 4:
+            case 6:
                 if (client.leaveGroup(cmd))
                 {
                     cout << "Cannot leave this group" << endl;
                 }
                 break;
-            case 5:
+            case 7:
                 client.disconnect();
                 return 0;
             default:

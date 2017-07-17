@@ -1,20 +1,21 @@
 #ifndef CONECTTOSERVER_H_
 #define CONECTTOSERVER_H_
 
-#define        SERVER_PORT                  8888
-#define        BUFFER_SIZE                  1024
-#define        CONNECTED                       1
-#define        DISCONNECTED                    0
-#define        HEADER_CONNECT          "Connect"
-#define        HEADER_KEEP_ALIVE     "KeepAlive"       
-#define        HEADER_GROUP_REQ    "ModifyGroup"
-#define        HEADER_SINGLE_CHAT   "SingleChat"       
-#define        HEADER_GROUP_CHAT     "GroupChat"
+#define        SERVER_PORT                     8888
+#define        BUFFER_SIZE                     1024
+#define        CONNECTED                          1
+#define        DISCONNECTED                       0
+#define        HEADER_CONNECT             "Connect"
+#define        HEADER_KEEP_ALIVE        "KeepAlive"       
+#define        HEADER_GROUP_MOD       "ModifyGroup"
+#define        HEADER_SINGLE_REQ    "SingleRequest"       
+#define        HEADER_GROUP_REQ      "GroupRequest"
 
 #include <string>
 #include <iostream>
 #include <vector>
 #include <pthread.h>
+#include <sys/stat.h>
 #include "TCPConnector.h"
 #include "TCPStream.h"
 
@@ -46,9 +47,10 @@ public:
     int leaveGroup(string);
     int singleChat(string);
     int groupChat(string);
+    int singleFileTransfer(string);
+    int groupFileTransfer(string);
     void disconnect();
     int getStatus();
-
 };
 
 #endif /* CONECTTOSERVER_H_ */

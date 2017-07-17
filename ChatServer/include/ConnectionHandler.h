@@ -1,12 +1,12 @@
 #ifndef CONNECTIONHANDLER_H_
 #define CONNECTIONHANDLER_H_
 
-#define        LISTENING_PORT               8888
-#define        HEADER_CONNECT          "Connect"
-#define        HEADER_KEEP_ALIVE     "KeepAlive"       
-#define        HEADER_GROUP_REQ    "ModifyGroup"
-#define        HEADER_SINGLE_CHAT   "SingleChat"       
-#define        HEADER_GROUP_CHAT     "GroupChat"
+#define        LISTENING_PORT                  8888
+#define        HEADER_CONNECT             "Connect"
+#define        HEADER_KEEP_ALIVE        "KeepAlive"       
+#define        HEADER_GROUP_MOD       "ModifyGroup"
+#define        HEADER_SINGLE_REQ    "SingleRequest"       
+#define        HEADER_GROUP_REQ      "GroupRequest"
 
 #include <iostream>
 #include <cstdlib>
