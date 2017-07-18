@@ -43,6 +43,17 @@ void* threadMain(void*)
     return NULL;
 }
 
+void* threadFileTransfer(void* fileStream)
+{
+    pthread_detach(pthread_self()); 
+
+    ConnectToServer& client = ConnectToServer::getInstance();
+    client.transferFile((TCPStream*) fileStream, filePath);
+
+    delete (TCPStream*) fileStream;
+    return NULL;
+}
+
 int startWith(string str, string prefix)
 {
    if (!str.compare(0, prefix.size(), prefix))
@@ -78,6 +89,111 @@ int checkDirectory(const char* pathName)
         printf( "%s is NOT a regular file\n", pathName );
         return -1;
     }
+}
+
+string getFileName(string path)
+{
+    int pos;
+    int temp = 0;
+    while (temp >= 0)
+    {
+        pos = temp;
+        temp = path.find("/", pos + 1);
+    }
+
+    return path.substr(pos + 1);
+}
+
+long getFileSize(const char* fileName)
+{
+    ifstream in(fileName, ifstream::ate | ifstream::binary);
+    return (long)in.tellg(); 
+}
+
+int ConnectToServer::transferFile(TCPStream* fileStream, string path)
+{
+    string fileName = getFileName(path);
+    long fileSize = getFileSize(path.c_str());
+
+    int seqNum = 0;
+    char buffer[BUFFER_SIZE];
+    int rcvMsgSize;
+    string rcvMsg;
+
+    string sendMsg = fileName;
+    fileStream->send(sendMsg.c_str(), sendMsg.length());
+    
+    if ((rcvMsgSize = fileStream->receive(buffer, BUFFER_SIZE)) > 0)
+    {
+        buffer[rcvMsgSize] = '\0';
+        rcvMsg = buffer;
+        if (stoi(rcvMsg) == seqNum)
+        {
+            seqNum++;
+        }
+        else
+        {
+            cout << "Sending error" << endl;
+            return -1;
+        }
+    }
+
+    sendMsg = to_string(fileSize);
+    fileStream->send(sendMsg.c_str(), sendMsg.length());
+
+    if ((rcvMsgSize = fileStream->receive(buffer, BUFFER_SIZE)) > 0)
+    {
+        buffer[rcvMsgSize] = '\0';
+        rcvMsg = buffer;
+        if (stoi(rcvMsg) == seqNum)
+        {
+            seqNum++;
+        }
+        else
+        {
+            cout << "Sending file error" << endl;
+            return -1;
+        }
+    }
+
+    FILE *fs = fopen(path.c_str(), "r");
+    if(fs == NULL)
+    {
+        printf("ERROR: File %s not found.\n", path.c_str());
+        return -1;
+    }
+
+    char sendingBuf[BUFFER_SIZE];
+    bzero(sendingBuf, BUFFER_SIZE); 
+    int blockSize;
+
+    cout << "Sending file..." << endl;
+
+    while((blockSize = fread(sendingBuf, sizeof(char), BUFFER_SIZE, fs)) > 0)
+    {
+        cout << blockSize << endl;
+        fileStream->send(sendingBuf, blockSize);
+        bzero(sendingBuf, BUFFER_SIZE);
+
+        if ((rcvMsgSize = fileStream->receive(buffer, BUFFER_SIZE)) > 0)
+        {
+            buffer[rcvMsgSize] = '\0';
+            rcvMsg = buffer;
+            if (stoi(rcvMsg) == seqNum)
+            {
+                seqNum++;
+            }
+            else
+            {
+                cout << "Sending error" << endl;
+                break;
+            }
+        }
+        
+    }
+    fclose(fs);
+
+    printf("File %s  was sent!\n", fileName.c_str());
 }
 
 int ConnectToServer::receiveMessage()
@@ -146,6 +262,29 @@ int ConnectToServer::receiveMessage()
         else if (rcvMsg == "GROUP MESSAGE")
         {
             sendMsg = message;
+            stream->send(sendMsg.c_str(), sendMsg.length());
+        }
+        else if (rcvMsg == "CLIENT FILE")
+        {
+            TCPConnector* fileConnector = new TCPConnector();
+            TCPStream* fileStream = fileConnector->connect(serverIP.c_str(), FILE_PORT);
+
+            if (!fileStream)
+            {
+                cerr << "Could not connect to Server to send file" << endl;
+            }
+
+            pthread_t threadID;
+            if (pthread_create(&threadID, NULL, threadFileTransfer, (void *) fileStream) != 0)
+            {
+                cerr << "Could not create thread" << endl;
+            }
+            delete fileConnector;
+        }
+        else if (rcvMsg == "GROUP FILE")
+        {
+            sendMsg = message;
+            stream->send(sendMsg.c_str(), sendMsg.length());
         }
         else if (startWith(rcvMsg, "ALIAS"))
         {
@@ -179,6 +318,7 @@ int ConnectToServer::receiveMessage()
 
 int ConnectToServer::connect(string serverIP)
 {
+    this->serverIP = serverIP;
     connector = new TCPConnector();
     stream = connector->connect(serverIP.c_str(), SERVER_PORT);
 
@@ -336,21 +476,20 @@ int ConnectToServer::groupChat(string cmd)
 
 int ConnectToServer::singleFileTransfer(string cmd)
 {
-    done = 0;
     vector<string> v;
     if (split(cmd, v) != 0)
     {
         return -1;
     }
 
+    if (checkDirectory(v.at(1).c_str()))
+    {
+        return -1;
+    }
+
     clientAlias = v.at(0);
     filePath = v.at(1);
-    request = "Send file";
-
-    if (!checkDirectory(filePath.c_str()))
-    {
-        cout << "Sending file..." << endl;
-    }
+    request = "Send file";    
 
     char buffer[BUFFER_SIZE];
     int rcvMsgSize;
@@ -359,7 +498,6 @@ int ConnectToServer::singleFileTransfer(string cmd)
 
     sendMsg = HEADER_SINGLE_REQ;
     stream->send(sendMsg.c_str(), sendMsg.length());
-    while(!done);
 
     return 0;
 }
@@ -377,9 +515,9 @@ int ConnectToServer::groupFileTransfer(string cmd)
     filePath = v.at(1);
     request = "Send file";
 
-    if (!checkDirectory(filePath.c_str()))
+    if (checkDirectory(filePath.c_str()))
     {
-        cout << "Sending file..." << endl;
+        return -1;
     }
 
     char buffer[BUFFER_SIZE];

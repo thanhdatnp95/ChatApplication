@@ -2,6 +2,7 @@
 #define CONNECTIONHANDLER_H_
 
 #define        LISTENING_PORT                  8888
+#define        FILE_PORT                       9999
 #define        HEADER_CONNECT             "Connect"
 #define        HEADER_KEEP_ALIVE        "KeepAlive"       
 #define        HEADER_GROUP_MOD       "ModifyGroup"
@@ -11,6 +12,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <ctime>
+#include <fstream>
 #include "Client.h"
 #include "Group.h"
 #include "TCPStream.h"
@@ -24,6 +26,7 @@ class ConnectionHandler
     vector<Client*> lstClient;
     vector<Group*> lstGroup;
     TCPAcceptor* acceptor;
+    TCPAcceptor* fileAcceptor;
 
     ConnectionHandler();
 
@@ -43,6 +46,7 @@ public:
 
     void start();
     void handleClient(TCPStream*);
+    void handleFileTransfer(TCPStream*);
 };
 
 #endif /* CONNECTIONHANDLER_H_ */

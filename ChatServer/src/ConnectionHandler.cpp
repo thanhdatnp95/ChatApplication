@@ -9,6 +9,7 @@ ConnectionHandler& ConnectionHandler::getInstance()
 ConnectionHandler::ConnectionHandler()
 {
     acceptor = new TCPAcceptor(LISTENING_PORT);
+    fileAcceptor = new TCPAcceptor(FILE_PORT);
     clientID = 0;
     groupID = 0;
 }
@@ -39,6 +40,17 @@ void* threadMain(void *stream)
 
     ConnectionHandler& handler = ConnectionHandler::getInstance();
     handler.handleClient((TCPStream*) stream);
+
+    delete (TCPStream*) stream;
+    return NULL;
+}
+
+void* threadFileTransfer(void *stream)
+{
+    pthread_detach(pthread_self()); 
+
+    ConnectionHandler& handler = ConnectionHandler::getInstance();
+    handler.handleFileTransfer((TCPStream*) stream);
 
     delete (TCPStream*) stream;
     return NULL;
@@ -129,6 +141,63 @@ void ConnectionHandler::handleClient(TCPStream* stream)
         client->setStatus(OFFLINE);
         client->setStream(NULL);
     }
+}
+
+void ConnectionHandler::handleFileTransfer(TCPStream* stream)
+{
+    string fileName;
+    string fileSize;
+    long size;
+
+    char buffer[BUFFER_SIZE];
+    int rcvMsgSize;
+    string rcvMsg;
+    int seqNum = 0;
+    string sendMsg;
+
+    if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) > 0)
+    {
+        buffer[rcvMsgSize] = '\0';
+        fileName = buffer;
+    }
+
+    sendMsg = to_string(seqNum);
+    stream->send(sendMsg.c_str(), sendMsg.length());
+    seqNum++;
+
+    if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) > 0)
+    {
+        buffer[rcvMsgSize] = '\0';
+        fileSize = buffer;
+        size = stol(fileSize);
+    }
+
+    sendMsg = to_string(seqNum);
+    stream->send(sendMsg.c_str(), sendMsg.length());
+    seqNum++;
+
+    string outPath = "/home/uglywolf/Desktop/" + fileName;
+    ofstream outFile (outPath, ofstream::binary);
+    char fileBuffer[BUFFER_SIZE];
+    int bytesRead;
+
+    while (size)
+    {
+        cout << size << endl;
+        bytesRead = stream->receive(fileBuffer, BUFFER_SIZE > size ? size : BUFFER_SIZE);
+        cout << bytesRead << endl;
+        if (bytesRead < 0)
+        {
+            cout << "Receiving file error" << endl;
+            break;
+        }
+        outFile.write (fileBuffer, bytesRead); 
+        size -= bytesRead;
+
+        sendMsg = to_string(seqNum);
+        stream->send(sendMsg.c_str(), sendMsg.length());
+        seqNum++;
+    } 
 }
 
 Client* ConnectionHandler::updateClient(TCPStream* stream)
@@ -394,8 +463,22 @@ int ConnectionHandler::requestSingle(Client* client)
                 remoteClient->sendMessage(rcvMsg);
             }
             else if (rcvMsg == "Send file")
-            {
-                //Not implemented yet
+            {              
+                if (fileAcceptor->start() == 0)
+                {
+                    sendMsg = "CLIENT FILE";
+                    stream->send(sendMsg.c_str(), sendMsg.length());
+
+                    TCPStream *fileStream = fileAcceptor->accept();
+                    if (fileStream != NULL)
+                    {
+                        pthread_t threadID;
+                        if (pthread_create(&threadID, NULL, threadFileTransfer, (void *) fileStream) != 0)
+                        {
+                            cerr << "Could not create thread" << endl;
+                        }
+                    }
+                }                
             }
             else
             {

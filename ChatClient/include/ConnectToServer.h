@@ -2,6 +2,7 @@
 #define CONECTTOSERVER_H_
 
 #define        SERVER_PORT                     8888
+#define        FILE_PORT                       9999
 #define        BUFFER_SIZE                     1024
 #define        CONNECTED                          1
 #define        DISCONNECTED                       0
@@ -12,10 +13,12 @@
 #define        HEADER_GROUP_REQ      "GroupRequest"
 
 #include <string>
+#include <string.h>
 #include <iostream>
 #include <vector>
 #include <pthread.h>
 #include <sys/stat.h>
+#include <fstream>
 #include "TCPConnector.h"
 #include "TCPStream.h"
 
@@ -24,6 +27,7 @@ using namespace std;
 class ConnectToServer
 {
     string alias;
+    string serverIP;
     TCPConnector* connector;
     TCPStream* stream;
     static int status;
@@ -49,6 +53,7 @@ public:
     int groupChat(string);
     int singleFileTransfer(string);
     int groupFileTransfer(string);
+    int transferFile(TCPStream*, string);
     void disconnect();
     int getStatus();
 };
