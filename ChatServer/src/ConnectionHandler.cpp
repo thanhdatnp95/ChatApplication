@@ -9,7 +9,7 @@ ConnectionHandler& ConnectionHandler::getInstance()
 ConnectionHandler::ConnectionHandler()
 {
     acceptor = new TCPAcceptor(LISTENING_PORT);
-    fileAcceptor = new TCPAcceptor(FILE_PORT);
+    fileAcceptor = new TCPAcceptor(SERVER_FILE_PORT);
     clientID = 0;
     groupID = 0;
 }
@@ -147,10 +147,14 @@ void ConnectionHandler::handleFileTransfer(TCPStream* stream)
 {
     string fileName;
     string fileSize;
+    string rcvObj;
+    string rcvName;
+    string sendName;
     long size;
 
     char buffer[BUFFER_SIZE];
     int rcvMsgSize;
+    int rcvSize;
     string rcvMsg;
     int seqNum = 0;
     string sendMsg;
@@ -158,7 +162,7 @@ void ConnectionHandler::handleFileTransfer(TCPStream* stream)
     if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) > 0)
     {
         buffer[rcvMsgSize] = '\0';
-        fileName = buffer;
+        rcvObj = buffer;
     }
 
     sendMsg = to_string(seqNum);
@@ -168,36 +172,258 @@ void ConnectionHandler::handleFileTransfer(TCPStream* stream)
     if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) > 0)
     {
         buffer[rcvMsgSize] = '\0';
-        fileSize = buffer;
-        size = stol(fileSize);
+        rcvName = buffer;
+    }
+
+    TCPConnector* connector;
+    TCPStream* rcvStream;
+    if (rcvObj == "Client")
+    {
+        Client* rcvClient = checkExistingClient(rcvName);
+        if (rcvClient != NULL)
+        {
+            connector = new TCPConnector();
+            rcvStream = connector->connect(rcvClient->getIPAddr().c_str(), rcvClient->getFilePort());
+        }
+    }
+    else if (rcvObj == "Group")
+    {
+        vector<TCPStream*> lstStream;
+        int numOfClient;
+        Group* rcvGroup = checkExistingGroup(rcvName);
+        if (rcvGroup != NULL)
+        {            
+            if (!(numOfClient = rcvGroup->getLstStream(lstStream)))
+            {
+                cout << "All members  of group are offline" << endl;
+                return;
+            }
+            cout << "There are " << numOfClient << " member in group" << endl;                        
+        }
+        cout << "0" << endl;
+
+        sendMsg = to_string(seqNum);
+        stream->send(sendMsg.c_str(), sendMsg.length());
+        seqNum++;
+
+        if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) > 0)
+        {
+            buffer[rcvMsgSize] = '\0';
+            sendName = buffer;
+            sendName = rcvName + "::" + sendName;
+
+            for (int i = 0; i < numOfClient; i++)
+            {
+                lstStream.at(i)->send(sendName.c_str(), sendName.length());
+                if ((rcvSize = lstStream.at(i)->receive(buffer, BUFFER_SIZE)) > 0)
+                {
+                    buffer[rcvSize] = '\0';
+                    rcvMsg = buffer;
+                    if (stoi(rcvMsg) != seqNum)
+                    {
+                        cout << "Sending error" << endl;    
+                    }
+                }
+            }
+        }
+        cout << "1" << endl;
+        sendMsg = to_string(seqNum);
+        stream->send(sendMsg.c_str(), sendMsg.length());
+        seqNum++;
+
+        if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) > 0)
+        {
+            buffer[rcvMsgSize] = '\0';
+            fileName = buffer;
+            
+            for (int i = 0; i < numOfClient; i++)
+            {
+                lstStream.at(i)->send(buffer, rcvMsgSize);
+                if ((rcvSize = lstStream.at(i)->receive(buffer, BUFFER_SIZE)) > 0)
+                {
+                    buffer[rcvSize] = '\0';
+                    rcvMsg = buffer;
+                    if (stoi(rcvMsg) != seqNum)
+                    {
+                        cout << "Sending error" << endl;    
+                    }
+                }
+            }
+        }
+        cout << "2" << endl;
+        sendMsg = to_string(seqNum);
+        stream->send(sendMsg.c_str(), sendMsg.length());
+        seqNum++;
+
+        if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) > 0)
+        {
+            buffer[rcvMsgSize] = '\0';
+            fileSize = buffer;
+            size = stol(fileSize);
+
+            cout << "filesize: " << size << endl;
+            cout << numOfClient << endl;
+            
+            for (int i = 0; i < numOfClient; i++)
+            {
+                lstStream.at(i)->send(buffer, rcvMsgSize);
+                if ((rcvSize = lstStream.at(i)->receive(buffer, BUFFER_SIZE)) > 0)
+                {
+                    buffer[rcvSize] = '\0';
+                    rcvMsg = buffer;
+                    if (stoi(rcvMsg) != seqNum)
+                    {
+                        cout << "Sending error" << endl;    
+                    }
+                }
+            }
+        }
+        cout << "3" << endl;
+        sendMsg = to_string(seqNum);
+        stream->send(sendMsg.c_str(), sendMsg.length());
+        seqNum++;
+
+        char fileBuffer[BUFFER_SIZE];
+        int bytesRead;
+
+        cout << "Start receiving file..." << endl;
+        while (size)
+        {
+            bytesRead = stream->receive(fileBuffer, BUFFER_SIZE > size ? size : BUFFER_SIZE);
+            if (bytesRead < 0)
+            {
+                cout << "Receiving file error" << endl;
+                break;
+            }
+
+            for (int i = 0; i < numOfClient; i++)
+            {
+                lstStream.at(i)->send(fileBuffer, bytesRead);
+                if ((rcvMsgSize = lstStream.at(i)->receive(buffer, BUFFER_SIZE)) > 0)
+                {
+                    buffer[rcvSize] = '\0';
+                    rcvMsg = buffer;
+                    if (stoi(rcvMsg) != seqNum)
+                    {
+                        cout << "Sending error" << endl;    
+                    }
+                }
+            }
+            sendMsg = to_string(seqNum);
+            stream->send(sendMsg.c_str(), sendMsg.length());
+            seqNum++;
+
+            size -= bytesRead;      
+        }
+        return;
     }
 
     sendMsg = to_string(seqNum);
     stream->send(sendMsg.c_str(), sendMsg.length());
     seqNum++;
 
-    string outPath = "/home/uglywolf/Desktop/" + fileName;
-    ofstream outFile (outPath, ofstream::binary);
+    if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) > 0)
+    {
+        buffer[rcvMsgSize] = '\0';
+        sendName = buffer;
+        rcvStream->send(buffer, rcvMsgSize);
+    }
+
+    if ((rcvMsgSize = rcvStream->receive(buffer, BUFFER_SIZE)) > 0)
+    {
+        buffer[rcvMsgSize] = '\0';
+        rcvMsg = buffer;
+        if (stoi(rcvMsg) == seqNum)
+        {
+            sendMsg = to_string(seqNum);
+            stream->send(sendMsg.c_str(), sendMsg.length());
+            seqNum++;
+        }
+        else
+        {
+            cout << "Sending error" << endl;
+        }
+    }
+
+    if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) > 0)
+    {
+        buffer[rcvMsgSize] = '\0';
+        fileName = buffer;
+        rcvStream->send(buffer, rcvMsgSize);
+    }
+
+    if ((rcvMsgSize = rcvStream->receive(buffer, BUFFER_SIZE)) > 0)
+    {
+        buffer[rcvMsgSize] = '\0';
+        rcvMsg = buffer;
+        if (stoi(rcvMsg) == seqNum)
+        {
+            sendMsg = to_string(seqNum);
+            stream->send(sendMsg.c_str(), sendMsg.length());
+            seqNum++;
+        }
+        else
+        {
+            cout << "Sending error" << endl;
+        }
+    }
+
+    if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) > 0)
+    {
+        buffer[rcvMsgSize] = '\0';
+        fileSize = buffer;
+        rcvStream->send(buffer, rcvMsgSize);
+        size = stol(fileSize);
+    }
+
+    if ((rcvMsgSize = rcvStream->receive(buffer, BUFFER_SIZE)) > 0)
+    {
+        buffer[rcvMsgSize] = '\0';
+        rcvMsg = buffer;
+        if (stoi(rcvMsg) == seqNum)
+        {
+            sendMsg = to_string(seqNum);
+            stream->send(sendMsg.c_str(), sendMsg.length());
+            seqNum++;
+        }
+        else
+        {
+            cout << "Sending error" << endl;
+        }
+    }
+    
     char fileBuffer[BUFFER_SIZE];
     int bytesRead;
 
     while (size)
     {
-        cout << size << endl;
         bytesRead = stream->receive(fileBuffer, BUFFER_SIZE > size ? size : BUFFER_SIZE);
-        cout << bytesRead << endl;
         if (bytesRead < 0)
         {
             cout << "Receiving file error" << endl;
             break;
         }
-        outFile.write (fileBuffer, bytesRead); 
+
+        rcvStream->send(fileBuffer, bytesRead);
+
         size -= bytesRead;
 
-        sendMsg = to_string(seqNum);
-        stream->send(sendMsg.c_str(), sendMsg.length());
-        seqNum++;
-    } 
+        if ((rcvMsgSize = rcvStream->receive(buffer, BUFFER_SIZE)) > 0)
+        {
+            buffer[rcvMsgSize] = '\0';
+            rcvMsg = buffer;
+            if (stoi(rcvMsg) == seqNum)
+            {
+                sendMsg = to_string(seqNum);
+                stream->send(sendMsg.c_str(), sendMsg.length());
+                seqNum++;
+            }
+            else
+            {
+                cout << "Sending error" << endl;
+            }
+        }        
+    }
 }
 
 Client* ConnectionHandler::updateClient(TCPStream* stream)
@@ -213,6 +439,15 @@ Client* ConnectionHandler::updateClient(TCPStream* stream)
     buffer[rcvMsgSize] = '\0';
     string MACAddr = buffer;
     string alias;
+
+    msg = "FILE_PORT";
+    stream->send(msg.c_str(), msg.length());
+
+    if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) == 0)
+        return NULL;
+    buffer[rcvMsgSize] = '\0';
+    string filePort = buffer;
+    
 
     time_t currentTime;
     struct tm *localTime;
@@ -242,6 +477,7 @@ Client* ConnectionHandler::updateClient(TCPStream* stream)
             client->setIPAddr(stream->getPeerIP());
             client->setStatus(ONLINE);
             client->setStream(stream);
+            client->setFilePort(stoi(filePort));
             return client;
         }
     }
@@ -256,7 +492,7 @@ Client* ConnectionHandler::updateClient(TCPStream* stream)
     cout << "[" << Month << "/" << Day << "/" << Year << "-" << Hour << ":" << Min << ":" << Sec << "]"
          << "[ONLINE]: " << MACAddr << "(" << alias << ")" << endl;
 
-    Client* client = new Client(clientID++, stream, alias, MACAddr);
+    Client* client = new Client(clientID++, stream, alias, MACAddr, stoi(filePort));
     lstClient.push_back(client);
 
     return client;
@@ -554,7 +790,21 @@ int ConnectionHandler::requestGroup(Client* client)
             }
             else if (rcvMsg == "Send file")
             {
-                //Not implemented yet
+                if (fileAcceptor->start() == 0)
+                {
+                    sendMsg = "GROUP FILE";
+                    stream->send(sendMsg.c_str(), sendMsg.length());
+
+                    TCPStream *fileStream = fileAcceptor->accept();
+                    if (fileStream != NULL)
+                    {
+                        pthread_t threadID;
+                        if (pthread_create(&threadID, NULL, threadFileTransfer, (void *) fileStream) != 0)
+                        {
+                            cerr << "Could not create thread" << endl;
+                        }
+                    }
+                }
             }
             else
             {

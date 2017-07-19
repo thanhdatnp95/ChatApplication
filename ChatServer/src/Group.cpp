@@ -21,6 +21,28 @@ void Group::setName(string name)
     this->name = name;
 }
 
+int Group::getLstStream(vector<TCPStream*>& lstStream)
+{
+    TCPConnector* connector;
+    TCPStream* rcvStream;
+    int size = lstClient.size();
+     
+    for (int i = 0; i < size; i++)
+    {
+        Client* remoteClient = lstClient.at(i);
+        if (remoteClient->getStatus() == ONLINE)
+        {
+            connector = new TCPConnector();
+            rcvStream = connector->connect(remoteClient->getIPAddr().c_str(), remoteClient->getFilePort());
+            if (rcvStream != NULL)
+            {
+                lstStream.push_back(rcvStream);
+            }
+        }
+    }
+    return lstStream.size();
+}
+
 int Group::getNumOfMem()
 {
     return lstClient.size();

@@ -1,6 +1,6 @@
 #include "Client.h"
 
-Client::Client(int id, TCPStream* stream, string alias, string mac)
+Client::Client(int id, TCPStream* stream, string alias, string mac, int port)
 {
     this->id = id;
     this->stream = stream;
@@ -8,6 +8,7 @@ Client::Client(int id, TCPStream* stream, string alias, string mac)
     this->IPAddr = stream->getPeerIP();
     this->port = PORT;
     this->MACAddr = mac;
+    this->filePort = port;
     status = ONLINE;
 }
 
@@ -44,6 +45,16 @@ string Client::getMACAddr()
 int Client::getStatus()
 {
     return status;
+}
+
+int Client::getFilePort()
+{
+    return filePort;
+}
+
+void Client::setFilePort(int filePort)
+{
+    this->filePort = filePort;
 }
 
 void Client::setStatus(int status)

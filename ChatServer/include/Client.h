@@ -19,12 +19,13 @@ class Client
     string alias;
     string IPAddr;
     int port;
+    int filePort;
     string MACAddr;
     int status;
     TCPStream* stream;
 
 public:
-    Client(int, TCPStream*, string, string);
+    Client(int, TCPStream*, string, string, int);
 
     int getID();
     string getAlias();
@@ -34,6 +35,8 @@ public:
     string getMACAddr();
     int getStatus();
     void setStatus(int);
+    int getFilePort();
+    void setFilePort(int);
     TCPStream* getStream();
     void setStream(TCPStream*);
     void sendMessage(string);

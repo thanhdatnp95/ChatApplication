@@ -2,7 +2,8 @@
 #define CONNECTIONHANDLER_H_
 
 #define        LISTENING_PORT                  8888
-#define        FILE_PORT                       9999
+#define        SERVER_FILE_PORT                9999
+#define        CLIENT_FILE_PORT                7777
 #define        HEADER_CONNECT             "Connect"
 #define        HEADER_KEEP_ALIVE        "KeepAlive"       
 #define        HEADER_GROUP_MOD       "ModifyGroup"
@@ -17,6 +18,7 @@
 #include "Group.h"
 #include "TCPStream.h"
 #include "TCPAcceptor.h"
+#include "TCPConnector.h"
 #include "pthread.h"
 
 class ConnectionHandler 

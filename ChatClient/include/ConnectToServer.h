@@ -2,7 +2,8 @@
 #define CONECTTOSERVER_H_
 
 #define        SERVER_PORT                     8888
-#define        FILE_PORT                       9999
+#define        SERVER_FILE_PORT                9999
+#define        CLIENT_FILE_PORT                7777
 #define        BUFFER_SIZE                     1024
 #define        CONNECTED                          1
 #define        DISCONNECTED                       0
@@ -20,6 +21,7 @@
 #include <sys/stat.h>
 #include <fstream>
 #include "TCPConnector.h"
+#include "TCPAcceptor.h"
 #include "TCPStream.h"
 
 using namespace std;
@@ -28,7 +30,9 @@ class ConnectToServer
 {
     string alias;
     string serverIP;
+    int filePort;
     TCPConnector* connector;
+    TCPAcceptor* acceptor;
     TCPStream* stream;
     static int status;
 
@@ -36,6 +40,7 @@ class ConnectToServer
 
     int groupOperation(string, string);
     int split(const string&, vector<string>&);
+    int acquirePort();
 
 public:
     ConnectToServer(ConnectToServer const&) = delete;
@@ -54,6 +59,8 @@ public:
     int singleFileTransfer(string);
     int groupFileTransfer(string);
     int transferFile(TCPStream*, string);
+    int startListen();
+    int receiveFile(TCPStream*);
     void disconnect();
     int getStatus();
 };

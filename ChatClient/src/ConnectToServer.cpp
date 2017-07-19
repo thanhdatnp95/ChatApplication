@@ -2,6 +2,7 @@
 
 string groupOpt;
 string groupName;
+string rcvObj;
 string request;
 string message;
 string filePath;
@@ -21,11 +22,139 @@ int  ConnectToServer::getStatus()
     return ConnectToServer::status;
 }
 
+void* threadListen(void*)
+{
+    pthread_detach(pthread_self()); 
+
+    ConnectToServer& client = ConnectToServer::getInstance();
+    client.startListen();
+
+    return NULL;
+}
+
+void* threadReceiveFile(void* stream)
+{
+    pthread_detach(pthread_self()); 
+
+    ConnectToServer& client = ConnectToServer::getInstance();
+    client.receiveFile((TCPStream*) stream);
+
+    return NULL;
+}
+
+int ConnectToServer::acquirePort()
+{
+    filePort = CLIENT_FILE_PORT;
+    acceptor= new TCPAcceptor(filePort);
+
+    while (true)
+    {
+        if (acceptor->start() == 0)
+        {
+            return filePort;
+        }
+        else
+        {
+            delete acceptor;
+            acceptor = new TCPAcceptor(++filePort);
+        }
+    }
+}
+
+int ConnectToServer::startListen()
+{
+    if (acceptor->start() == 0)
+    {
+        while (true)
+        {
+            TCPStream *stream = acceptor->accept();
+            if (stream != NULL)
+            {
+                pthread_t threadID;
+                if (pthread_create(&threadID, NULL, threadReceiveFile, (void *) stream) != 0)
+                {
+                    cerr << "Could not create thread" << endl;
+                }
+            }
+        }
+    }
+
+    cerr << "Could not start the Client" << endl;
+    exit(-1);
+}
+
+int ConnectToServer::receiveFile(TCPStream* stream)
+{
+    int seqNum = 2;
+    string fileName;
+    string fileSize;
+    long size;
+    string sendName;
+    char buffer[BUFFER_SIZE];
+    int rcvMsgSize;
+    string rcvMsg;
+    string sendMsg;
+
+    if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) > 0)
+    {
+        buffer[rcvMsgSize] = '\0';
+        sendName = buffer;
+    }
+
+    sendMsg = to_string(seqNum);
+    stream->send(sendMsg.c_str(), sendMsg.length());
+    seqNum++;
+
+    if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) > 0)
+    {
+        buffer[rcvMsgSize] = '\0';
+        fileName = buffer;        
+    }
+
+    sendMsg = to_string(seqNum);
+    stream->send(sendMsg.c_str(), sendMsg.length());
+    seqNum++;
+
+    if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) > 0)
+    {
+        buffer[rcvMsgSize] = '\0';
+        fileSize = buffer;
+        size = stol(fileSize);
+    }
+
+    sendMsg = to_string(seqNum);
+    stream->send(sendMsg.c_str(), sendMsg.length());
+    seqNum++;
+    
+    string outPath = "/home/uglywolf/Desktop/" + fileName;
+    ofstream outFile (outPath, ofstream::binary);
+
+    while (size)
+    {
+        rcvMsgSize = stream->receive(buffer, BUFFER_SIZE);
+        if (rcvMsgSize < 0)
+        {
+            cout << "Error in receiving file" << endl;
+        }
+
+        outFile.write (buffer, rcvMsgSize);
+        size -= rcvMsgSize;
+
+        sendMsg = to_string(seqNum);
+        stream->send(sendMsg.c_str(), sendMsg.length());
+        seqNum++;
+    }
+    cout << "Received a file: \"" << fileName << "\" from " << sendName << endl;
+}
+
 ConnectToServer::ConnectToServer()
 {
     alias = "";
     connector = NULL;
+    acceptor = NULL;
     stream = NULL;
+    filePort = acquirePort();
+    cout << filePort << endl;
 }
 
 string ConnectToServer::getAlias()
@@ -112,6 +241,7 @@ long getFileSize(const char* fileName)
 
 int ConnectToServer::transferFile(TCPStream* fileStream, string path)
 {
+    cout << "Start sending file " << endl;
     string fileName = getFileName(path);
     long fileSize = getFileSize(path.c_str());
 
@@ -120,7 +250,33 @@ int ConnectToServer::transferFile(TCPStream* fileStream, string path)
     int rcvMsgSize;
     string rcvMsg;
 
-    string sendMsg = fileName;
+    string sendMsg = rcvObj;
+    fileStream->send(sendMsg.c_str(), sendMsg.length());
+    cout << "0" << endl;
+    if ((rcvMsgSize = fileStream->receive(buffer, BUFFER_SIZE)) > 0)
+    {
+        buffer[rcvMsgSize] = '\0';
+        rcvMsg = buffer;
+        if (stoi(rcvMsg) == seqNum)
+        {
+            seqNum++;
+        }
+        else
+        {
+            cout << "Sending error" << endl;
+            return -1;
+        }
+    }
+    cout << "1" << endl;
+
+    if (rcvObj == "Client")
+    {
+        sendMsg = clientAlias;
+    }
+    else if (rcvObj == "Group")
+    {
+        sendMsg = groupName;
+    }    
     fileStream->send(sendMsg.c_str(), sendMsg.length());
     
     if ((rcvMsgSize = fileStream->receive(buffer, BUFFER_SIZE)) > 0)
@@ -137,7 +293,43 @@ int ConnectToServer::transferFile(TCPStream* fileStream, string path)
             return -1;
         }
     }
-
+    cout << "2" << endl;
+    sendMsg = alias;
+    fileStream->send(sendMsg.c_str(), sendMsg.length());
+    
+    if ((rcvMsgSize = fileStream->receive(buffer, BUFFER_SIZE)) > 0)
+    {
+        buffer[rcvMsgSize] = '\0';
+        rcvMsg = buffer;
+        if (stoi(rcvMsg) == seqNum)
+        {
+            seqNum++;
+        }
+        else
+        {
+            cout << "Sending error" << endl;
+            return -1;
+        }
+    }
+    cout << "3" << endl;
+    sendMsg = fileName;
+    fileStream->send(sendMsg.c_str(), sendMsg.length());
+    
+    if ((rcvMsgSize = fileStream->receive(buffer, BUFFER_SIZE)) > 0)
+    {
+        buffer[rcvMsgSize] = '\0';
+        rcvMsg = buffer;
+        if (stoi(rcvMsg) == seqNum)
+        {
+            seqNum++;
+        }
+        else
+        {
+            cout << "Sending error" << endl;
+            return -1;
+        }
+    }
+    cout << "4" << endl;
     sendMsg = to_string(fileSize);
     fileStream->send(sendMsg.c_str(), sendMsg.length());
 
@@ -155,7 +347,7 @@ int ConnectToServer::transferFile(TCPStream* fileStream, string path)
             return -1;
         }
     }
-
+    cout << "5" << endl;
     FILE *fs = fopen(path.c_str(), "r");
     if(fs == NULL)
     {
@@ -171,7 +363,6 @@ int ConnectToServer::transferFile(TCPStream* fileStream, string path)
 
     while((blockSize = fread(sendingBuf, sizeof(char), BUFFER_SIZE, fs)) > 0)
     {
-        cout << blockSize << endl;
         fileStream->send(sendingBuf, blockSize);
         bzero(sendingBuf, BUFFER_SIZE);
 
@@ -193,7 +384,7 @@ int ConnectToServer::transferFile(TCPStream* fileStream, string path)
     }
     fclose(fs);
 
-    printf("File %s  was sent!\n", fileName.c_str());
+    printf("File %s was sent!\n", fileName.c_str());
 }
 
 int ConnectToServer::receiveMessage()
@@ -228,6 +419,11 @@ int ConnectToServer::receiveMessage()
             stream->send(sendMsg.c_str(), sendMsg.length());            
             alias = sendMsg;
             status = CONNECTED;
+        }
+        else if (startWith(rcvMsg, "FILE_PORT"))
+        {
+            sendMsg = to_string(filePort);
+            stream->send(sendMsg.c_str(), sendMsg.length());            
         }
         else if (rcvMsg == "GROUP OPT")
         {
@@ -266,8 +462,9 @@ int ConnectToServer::receiveMessage()
         }
         else if (rcvMsg == "CLIENT FILE")
         {
+            rcvObj = "Client";
             TCPConnector* fileConnector = new TCPConnector();
-            TCPStream* fileStream = fileConnector->connect(serverIP.c_str(), FILE_PORT);
+            TCPStream* fileStream = fileConnector->connect(serverIP.c_str(), SERVER_FILE_PORT);
 
             if (!fileStream)
             {
@@ -283,8 +480,21 @@ int ConnectToServer::receiveMessage()
         }
         else if (rcvMsg == "GROUP FILE")
         {
-            sendMsg = message;
-            stream->send(sendMsg.c_str(), sendMsg.length());
+            rcvObj = "Group";
+            TCPConnector* fileConnector = new TCPConnector();
+            TCPStream* fileStream = fileConnector->connect(serverIP.c_str(), SERVER_FILE_PORT);
+
+            if (!fileStream)
+            {
+                cerr << "Could not connect to Server to send file" << endl;
+            }
+
+            pthread_t threadID;
+            if (pthread_create(&threadID, NULL, threadFileTransfer, (void *) fileStream) != 0)
+            {
+                cerr << "Could not create thread" << endl;
+            }
+            delete fileConnector;
         }
         else if (startWith(rcvMsg, "ALIAS"))
         {
@@ -336,6 +546,13 @@ int ConnectToServer::connect(string serverIP)
 
     string sendMsg = HEADER_CONNECT;
     stream->send(sendMsg.c_str(), sendMsg.length());
+
+    pthread_t listenThread;
+    if (pthread_create(&listenThread, NULL, threadListen, NULL) != 0)
+    {
+        cerr << "Could not create thread" << endl;
+        return -1;
+    }
 
     return 0;
 }
@@ -504,7 +721,6 @@ int ConnectToServer::singleFileTransfer(string cmd)
 
 int ConnectToServer::groupFileTransfer(string cmd)
 {
-    done = 0;
     vector<string> v;
     if (split(cmd, v) != 0)
     {
@@ -527,7 +743,6 @@ int ConnectToServer::groupFileTransfer(string cmd)
 
     sendMsg = HEADER_GROUP_REQ;
     stream->send(sendMsg.c_str(), sendMsg.length());
-    while(!done);
 
     return 0;
 }

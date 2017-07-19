@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include "Client.h"
+#include "TCPConnector.h"
 
 using namespace std;
 
@@ -19,6 +20,7 @@ public:
     
     string getName();
     void setName(string);
+    int getLstStream(vector<TCPStream*>&);
     int getNumOfMem();
 
     void addMem(Client*);
