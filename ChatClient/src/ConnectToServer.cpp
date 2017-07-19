@@ -126,8 +126,13 @@ int ConnectToServer::receiveFile(TCPStream* stream)
     stream->send(sendMsg.c_str(), sendMsg.length());
     seqNum++;
     
-    string outPath = "/home/uglywolf/Desktop/" + fileName;
-    ofstream outFile (outPath, ofstream::binary);
+    struct stat st = {0};
+    string outPath = "/home/uglywolf/Desktop/" + alias + "/";
+    if (stat(outPath.c_str(), &st) == -1)
+    {
+        mkdir(outPath.c_str(), 0700);
+    }
+    ofstream outFile (outPath + fileName, ofstream::binary);
 
     while (size)
     {
@@ -241,7 +246,6 @@ long getFileSize(const char* fileName)
 
 int ConnectToServer::transferFile(TCPStream* fileStream, string path)
 {
-    cout << "Start sending file " << endl;
     string fileName = getFileName(path);
     long fileSize = getFileSize(path.c_str());
 
@@ -252,7 +256,6 @@ int ConnectToServer::transferFile(TCPStream* fileStream, string path)
 
     string sendMsg = rcvObj;
     fileStream->send(sendMsg.c_str(), sendMsg.length());
-    cout << "0" << endl;
     if ((rcvMsgSize = fileStream->receive(buffer, BUFFER_SIZE)) > 0)
     {
         buffer[rcvMsgSize] = '\0';
@@ -267,7 +270,6 @@ int ConnectToServer::transferFile(TCPStream* fileStream, string path)
             return -1;
         }
     }
-    cout << "1" << endl;
 
     if (rcvObj == "Client")
     {
@@ -293,7 +295,7 @@ int ConnectToServer::transferFile(TCPStream* fileStream, string path)
             return -1;
         }
     }
-    cout << "2" << endl;
+
     sendMsg = alias;
     fileStream->send(sendMsg.c_str(), sendMsg.length());
     
@@ -311,7 +313,7 @@ int ConnectToServer::transferFile(TCPStream* fileStream, string path)
             return -1;
         }
     }
-    cout << "3" << endl;
+
     sendMsg = fileName;
     fileStream->send(sendMsg.c_str(), sendMsg.length());
     
@@ -329,7 +331,7 @@ int ConnectToServer::transferFile(TCPStream* fileStream, string path)
             return -1;
         }
     }
-    cout << "4" << endl;
+
     sendMsg = to_string(fileSize);
     fileStream->send(sendMsg.c_str(), sendMsg.length());
 
@@ -347,7 +349,7 @@ int ConnectToServer::transferFile(TCPStream* fileStream, string path)
             return -1;
         }
     }
-    cout << "5" << endl;
+
     FILE *fs = fopen(path.c_str(), "r");
     if(fs == NULL)
     {
@@ -360,7 +362,6 @@ int ConnectToServer::transferFile(TCPStream* fileStream, string path)
     int blockSize;
 
     cout << "Sending file..." << endl;
-
     while((blockSize = fread(sendingBuf, sizeof(char), BUFFER_SIZE, fs)) > 0)
     {
         fileStream->send(sendingBuf, blockSize);

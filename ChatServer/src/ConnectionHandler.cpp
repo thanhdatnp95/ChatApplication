@@ -198,9 +198,7 @@ void ConnectionHandler::handleFileTransfer(TCPStream* stream)
                 cout << "All members  of group are offline" << endl;
                 return;
             }
-            cout << "There are " << numOfClient << " member in group" << endl;                        
         }
-        cout << "0" << endl;
 
         sendMsg = to_string(seqNum);
         stream->send(sendMsg.c_str(), sendMsg.length());
@@ -226,7 +224,7 @@ void ConnectionHandler::handleFileTransfer(TCPStream* stream)
                 }
             }
         }
-        cout << "1" << endl;
+
         sendMsg = to_string(seqNum);
         stream->send(sendMsg.c_str(), sendMsg.length());
         seqNum++;
@@ -250,7 +248,7 @@ void ConnectionHandler::handleFileTransfer(TCPStream* stream)
                 }
             }
         }
-        cout << "2" << endl;
+
         sendMsg = to_string(seqNum);
         stream->send(sendMsg.c_str(), sendMsg.length());
         seqNum++;
@@ -260,9 +258,6 @@ void ConnectionHandler::handleFileTransfer(TCPStream* stream)
             buffer[rcvMsgSize] = '\0';
             fileSize = buffer;
             size = stol(fileSize);
-
-            cout << "filesize: " << size << endl;
-            cout << numOfClient << endl;
             
             for (int i = 0; i < numOfClient; i++)
             {
@@ -272,13 +267,13 @@ void ConnectionHandler::handleFileTransfer(TCPStream* stream)
                     buffer[rcvSize] = '\0';
                     rcvMsg = buffer;
                     if (stoi(rcvMsg) != seqNum)
-                    {
+                    {                        
                         cout << "Sending error" << endl;    
                     }
                 }
             }
         }
-        cout << "3" << endl;
+
         sendMsg = to_string(seqNum);
         stream->send(sendMsg.c_str(), sendMsg.length());
         seqNum++;
@@ -286,7 +281,6 @@ void ConnectionHandler::handleFileTransfer(TCPStream* stream)
         char fileBuffer[BUFFER_SIZE];
         int bytesRead;
 
-        cout << "Start receiving file..." << endl;
         while (size)
         {
             bytesRead = stream->receive(fileBuffer, BUFFER_SIZE > size ? size : BUFFER_SIZE);
@@ -301,10 +295,10 @@ void ConnectionHandler::handleFileTransfer(TCPStream* stream)
                 lstStream.at(i)->send(fileBuffer, bytesRead);
                 if ((rcvMsgSize = lstStream.at(i)->receive(buffer, BUFFER_SIZE)) > 0)
                 {
-                    buffer[rcvSize] = '\0';
+                    buffer[rcvMsgSize] = '\0';
                     rcvMsg = buffer;
                     if (stoi(rcvMsg) != seqNum)
-                    {
+                    {                        
                         cout << "Sending error" << endl;    
                     }
                 }
