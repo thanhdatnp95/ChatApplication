@@ -192,7 +192,7 @@ void ConnectionHandler::handleFileTransfer(TCPStream* stream)
         int numOfClient;
         Group* rcvGroup = checkExistingGroup(rcvName);
         if (rcvGroup != NULL)
-        {            
+        {        
             if (!(numOfClient = rcvGroup->getLstStream(lstStream)))
             {
                 cout << "All members  of group are offline" << endl;
@@ -236,7 +236,7 @@ void ConnectionHandler::handleFileTransfer(TCPStream* stream)
             
             for (int i = 0; i < numOfClient; i++)
             {
-                lstStream.at(i)->send(buffer, rcvMsgSize);
+                lstStream.at(i)->send(fileName.c_str(), fileName.length());
                 if ((rcvSize = lstStream.at(i)->receive(buffer, BUFFER_SIZE)) > 0)
                 {
                     buffer[rcvSize] = '\0';
@@ -261,7 +261,7 @@ void ConnectionHandler::handleFileTransfer(TCPStream* stream)
             
             for (int i = 0; i < numOfClient; i++)
             {
-                lstStream.at(i)->send(buffer, rcvMsgSize);
+                lstStream.at(i)->send(fileSize.c_str(), fileSize.length());
                 if ((rcvSize = lstStream.at(i)->receive(buffer, BUFFER_SIZE)) > 0)
                 {
                     buffer[rcvSize] = '\0';
@@ -759,7 +759,14 @@ int ConnectionHandler::requestGroup(Client* client)
     else
     {
         if (group->checkExistingMem(client->getID()))
-        {            
+        {
+            if (!group->checkStatus())
+            {
+                sendMsg = "[OK]All members of group " + group->getName() + " are offline";
+                stream->send(sendMsg.c_str(), sendMsg.length());
+                return 0;
+            }
+
             sendMsg = "GROUP REQUEST";
             stream->send(sendMsg.c_str(), sendMsg.length());
 

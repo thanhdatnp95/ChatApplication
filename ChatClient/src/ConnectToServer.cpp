@@ -108,7 +108,7 @@ int ConnectToServer::receiveFile(TCPStream* stream)
     if ((rcvMsgSize = stream->receive(buffer, BUFFER_SIZE)) > 0)
     {
         buffer[rcvMsgSize] = '\0';
-        fileName = buffer;        
+        fileName = buffer;  
     }
 
     sendMsg = to_string(seqNum);
@@ -159,7 +159,6 @@ ConnectToServer::ConnectToServer()
     acceptor = NULL;
     stream = NULL;
     filePort = acquirePort();
-    cout << filePort << endl;
 }
 
 string ConnectToServer::getAlias()
@@ -385,7 +384,7 @@ int ConnectToServer::transferFile(TCPStream* fileStream, string path)
     }
     fclose(fs);
 
-    printf("File %s was sent!\n", fileName.c_str());
+    printf("File %s was sent\n", fileName.c_str());
 }
 
 int ConnectToServer::receiveMessage()

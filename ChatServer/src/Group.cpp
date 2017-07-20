@@ -79,6 +79,22 @@ int Group::checkExistingMem(int clientID)
     return 0;
 }
 
+int Group::checkStatus()
+{
+    int size = lstClient.size();
+
+    for (int i = 0; i < size; i++)
+    {
+        Client* remoteClient = lstClient.at(i);
+        if (remoteClient->getStatus() == ONLINE)
+        {
+            return 1;
+        }
+    }
+    
+    return 0;
+}
+
 void Group::broadcastMessage(Client* client, string msg)
 {
     int size = lstClient.size();

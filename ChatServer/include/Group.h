@@ -26,6 +26,7 @@ public:
     void addMem(Client*);
     void removeMem(int);
     int checkExistingMem(int);
+    int checkStatus();
     void broadcastMessage(Client*, string);
 };
 
