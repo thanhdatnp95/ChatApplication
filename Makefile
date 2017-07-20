@@ -14,4 +14,4 @@ server:
 clean:
 	make -C $(CLIENT_DIR) clean
 	make -C $(SERVER_DIR) clean
-
+	
