@@ -278,12 +278,12 @@ void ConnectionHandler::handleFileTransfer(TCPStream* stream)
         stream->send(sendMsg.c_str(), sendMsg.length());
         seqNum++;
 
-        char fileBuffer[BUFFER_SIZE];
+        char fileBuffer[FILE_BUFFER];
         int bytesRead;
 
         while (size)
         {
-            bytesRead = stream->receive(fileBuffer, BUFFER_SIZE > size ? size : BUFFER_SIZE);
+            bytesRead = stream->receive(fileBuffer, FILE_BUFFER > size ? size : FILE_BUFFER);
             if (bytesRead < 0)
             {
                 cout << "Receiving file error" << endl;
@@ -386,12 +386,12 @@ void ConnectionHandler::handleFileTransfer(TCPStream* stream)
         }
     }
     
-    char fileBuffer[BUFFER_SIZE];
+    char fileBuffer[FILE_BUFFER];
     int bytesRead;
 
     while (size)
     {
-        bytesRead = stream->receive(fileBuffer, BUFFER_SIZE > size ? size : BUFFER_SIZE);
+        bytesRead = stream->receive(fileBuffer, FILE_BUFFER > size ? size : FILE_BUFFER);
         if (bytesRead < 0)
         {
             cout << "Receiving file error" << endl;

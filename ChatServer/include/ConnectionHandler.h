@@ -4,6 +4,7 @@
 #define        LISTENING_PORT                  8888
 #define        SERVER_FILE_PORT                9999
 #define        CLIENT_FILE_PORT                7777
+#define        FILE_BUFFER                     4096
 #define        HEADER_CONNECT             "Connect"
 #define        HEADER_KEEP_ALIVE        "KeepAlive"       
 #define        HEADER_GROUP_MOD       "ModifyGroup"

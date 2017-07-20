@@ -5,6 +5,7 @@
 #define        SERVER_FILE_PORT                9999
 #define        CLIENT_FILE_PORT                7777
 #define        BUFFER_SIZE                     1024
+#define        FILE_BUFFER                     4096
 #define        CONNECTED                          1
 #define        DISCONNECTED                       0
 #define        HEADER_CONNECT             "Connect"

@@ -91,6 +91,7 @@ int ConnectToServer::receiveFile(TCPStream* stream)
     long size;
     string sendName;
     char buffer[BUFFER_SIZE];
+    char fileBuffer[FILE_BUFFER];
     int rcvMsgSize;
     string rcvMsg;
     string sendMsg;
@@ -136,13 +137,13 @@ int ConnectToServer::receiveFile(TCPStream* stream)
 
     while (size)
     {
-        rcvMsgSize = stream->receive(buffer, BUFFER_SIZE);
+        rcvMsgSize = stream->receive(fileBuffer, FILE_BUFFER);
         if (rcvMsgSize < 0)
         {
             cout << "Error in receiving file" << endl;
         }
 
-        outFile.write (buffer, rcvMsgSize);
+        outFile.write (fileBuffer, rcvMsgSize);
         size -= rcvMsgSize;
 
         sendMsg = to_string(seqNum);
@@ -150,6 +151,7 @@ int ConnectToServer::receiveFile(TCPStream* stream)
         seqNum++;
     }
     cout << "Received a file: \"" << fileName << "\" from " << sendName << endl;
+    return 0;
 }
 
 ConnectToServer::ConnectToServer()
@@ -356,15 +358,15 @@ int ConnectToServer::transferFile(TCPStream* fileStream, string path)
         return -1;
     }
 
-    char sendingBuf[BUFFER_SIZE];
-    bzero(sendingBuf, BUFFER_SIZE); 
+    char sendingBuf[FILE_BUFFER];
+    bzero(sendingBuf, FILE_BUFFER); 
     int blockSize;
 
     cout << "Sending file..." << endl;
-    while((blockSize = fread(sendingBuf, sizeof(char), BUFFER_SIZE, fs)) > 0)
+    while((blockSize = fread(sendingBuf, sizeof(char), FILE_BUFFER, fs)) > 0)
     {
         fileStream->send(sendingBuf, blockSize);
-        bzero(sendingBuf, BUFFER_SIZE);
+        bzero(sendingBuf, FILE_BUFFER);
 
         if ((rcvMsgSize = fileStream->receive(buffer, BUFFER_SIZE)) > 0)
         {
@@ -385,6 +387,7 @@ int ConnectToServer::transferFile(TCPStream* fileStream, string path)
     fclose(fs);
 
     printf("File %s was sent\n", fileName.c_str());
+    return 0;
 }
 
 int ConnectToServer::receiveMessage()
@@ -574,14 +577,9 @@ int ConnectToServer::groupOperation(string group, string opt)
     groupOpt = opt;
 
     string sendMsg = HEADER_GROUP_MOD;
-    char buffer[BUFFER_SIZE];
-    int rcvMsgSize;
-    string rcvMsg;
-
     stream->send(sendMsg.c_str(), sendMsg.length());
 
     while(!done);
-
     return 0;
 }
 
@@ -653,15 +651,10 @@ int ConnectToServer::singleChat(string cmd)
     message = v.at(1);
     request = "Send message";
 
-    char buffer[BUFFER_SIZE];
-    int rcvMsgSize;
-    string sendMsg;
-    string rcvMsg;
-
-    sendMsg = HEADER_SINGLE_REQ;
+    string sendMsg = HEADER_SINGLE_REQ;
     stream->send(sendMsg.c_str(), sendMsg.length());
-    while(!done);
 
+    while(!done);
     return 0;
 }
 
@@ -679,15 +672,10 @@ int ConnectToServer::groupChat(string cmd)
     message = v.at(1);
     request = "Send message";
 
-    char buffer[BUFFER_SIZE];
-    int rcvMsgSize;
-    string sendMsg;
-    string rcvMsg;
-
-    sendMsg = HEADER_GROUP_REQ;
+    string sendMsg = HEADER_GROUP_REQ;
     stream->send(sendMsg.c_str(), sendMsg.length());
-    while(!done);
 
+    while(!done);
     return 0;
 }
 
@@ -708,12 +696,7 @@ int ConnectToServer::singleFileTransfer(string cmd)
     filePath = v.at(1);
     request = "Send file";    
 
-    char buffer[BUFFER_SIZE];
-    int rcvMsgSize;
-    string sendMsg;
-    string rcvMsg;
-
-    sendMsg = HEADER_SINGLE_REQ;
+    string sendMsg = HEADER_SINGLE_REQ;
     stream->send(sendMsg.c_str(), sendMsg.length());
 
     return 0;
@@ -736,12 +719,7 @@ int ConnectToServer::groupFileTransfer(string cmd)
         return -1;
     }
 
-    char buffer[BUFFER_SIZE];
-    int rcvMsgSize;
-    string sendMsg;
-    string rcvMsg;
-
-    sendMsg = HEADER_GROUP_REQ;
+    string sendMsg = HEADER_GROUP_REQ;
     stream->send(sendMsg.c_str(), sendMsg.length());
 
     return 0;
