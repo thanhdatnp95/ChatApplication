@@ -12,7 +12,6 @@ all:	$(TARGET)
 $(TARGET):	$(OBJS)
 	$(CC) $(CFLAGS) $(PTHREAD) -o $@ $^ $(LIBS)
 
-
 build/%.o:	src/%.cpp
 	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
