@@ -1,17 +1,17 @@
-CLIENT_DIR = ChatClient
-SERVER_DIR = ChatServer
+CC = g++
+CFLAGS = -Wall -g
+SRCS = $(wildcard *.cpp)
+OBJS = $(patsubst %.cpp,%.o,$(SRCS))
+TARGET = main
 
-.PHONY: all client server clean
+all:	$(TARGET)
 
-all:	client server
+$(TARGET):	$(OBJS)
+	$(CC) $(CFLAGS) -o $@ $^
 
-client:
-	make -C $(CLIENT_DIR)
-
-server:
-	make -C $(SERVER_DIR)
+%.o:	%.cpp
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	make -C $(CLIENT_DIR) clean
-	make -C $(SERVER_DIR) clean
-	
+	rm -rf *.o $(TARGET)
+
